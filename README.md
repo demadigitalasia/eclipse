@@ -1,12 +1,12 @@
-# 🎬 Cheat Clip PRO
+# ECLIPSE
 
-> **AI Powered Auto Clipper — Turn long YouTube, Google Drive, and uploaded videos into viral TikToks, Shorts, and Reels with animated subtitles, face centering, and music in minutes.**
+> **ECLIPSE is a video clipping tool that makes creating short clips fast and easy. Developed by Dema Digital Asia ([demadigitalasia.com](https://demadigitalasia.com)).**
 
 ---
 
 ## ⚡ Quick Start & Setup
 
-Follow these steps to set up and run Cheat Clip PRO locally on **Windows**, **macOS**, or **Linux**.
+Follow these steps to set up and run ECLIPSE locally on **Windows**, **macOS**, or **Linux**.
 
 ### Step 1: Prerequisites
 
@@ -46,8 +46,8 @@ Make sure you have the following installed:
 Open your terminal and clone the repository:
 
 ```bash
-git clone https://github.com/galihjuansaputra/cheat-clip-pro.git
-cd cheat-clip-pro
+git clone https://github.com/demadigitalasia/eclipse.git
+cd eclipse
 ```
 
 ---
@@ -94,7 +94,7 @@ npm run dev
 
 ## 🔄 Updating to the Latest Version
 
-To update Cheat Clip PRO to the latest release:
+To update ECLIPSE to the latest release:
 
 ```bash
 git pull
@@ -107,7 +107,7 @@ pip install -r backend/requirements.txt
 
 ## 🔑 Free Google Gemini API Key (Takes 1 Minute)
 
-Cheat Clip PRO uses Google's AI to find the best viral moments for free:
+ECLIPSE uses Google's AI to find the best viral moments for free:
 1. Go to **[Google AI Studio](https://aistudio.google.com/)** and sign in with any Google account.
 2. Click **"Get API key"** (or **"Create API key"**).
 3. Copy your key (starts with `AIzaSy...`).
@@ -154,7 +154,7 @@ Cheat Clip PRO uses Google's AI to find the best viral moments for free:
 * **Fix:** Click the 🍪 **Cookies** button in the top navigation bar, export your YouTube cookies using a free browser extension (like *Get cookies.txt locally*), and paste them into the app.
 
 ### 3. Does this work on AMD graphics cards and Mac?
-* **Yes!** Cheat Clip PRO automatically supports:
+* **Yes!** ECLIPSE automatically supports:
   * **NVIDIA** (`h264_nvenc`)
   * **AMD** (`h264_amf` on Radeon GPUs & Ryzen CPUs)
   * **Intel** (`h264_qsv` on Arc & UHD Graphics)

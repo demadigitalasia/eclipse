@@ -9,11 +9,12 @@ import subprocess
 import unicodedata
 import math
 import urllib.parse
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple, Union
 from PIL import Image, ImageDraw, ImageFont
 
-logger = logging.getLogger("cheat-clip-pro.video-engine")
+logger = logging.getLogger("eclipse.video-engine")
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMP_DIR = BASE_DIR / "temp_clips"
@@ -40,10 +41,65 @@ CASCADES_DIR.mkdir(parents=True, exist_ok=True)
 UPLOADS_DIR = TEMP_DIR / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def get_ffmpeg_executable() -> str:
+    """Return the configured FFmpeg binary or raise an actionable error."""
+    configured_path = os.environ.get("ECLIPSE_FFMPEG_PATH", "ffmpeg").strip() or "ffmpeg"
+    resolved_path = shutil.which(configured_path)
+    if resolved_path:
+        return resolved_path
+    raise RuntimeError(
+        f"FFmpeg was not found at '{configured_path}'. Install FFmpeg or set "
+        "ECLIPSE_FFMPEG_PATH in backend/.env to the full path of its executable."
+    )
+
+
+@lru_cache(maxsize=8)
+def ffmpeg_has_filter(ffmpeg_path: str, filter_name: str) -> bool:
+    """Check the selected FFmpeg build for a filter without starting a render."""
+    try:
+        result = subprocess.run(
+            [ffmpeg_path, "-hide_banner", "-filters"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if result.returncode != 0:
+        return False
+    return any(
+        len(parts := line.split()) >= 2 and parts[1] == filter_name
+        for line in result.stdout.splitlines()
+    )
+
+
+def _escape_ffmpeg_filter_option(value: str) -> str:
+    """Escape an option value for FFmpeg's nested filtergraph parsers.
+
+    Filter options are parsed once as part of the filtergraph and again by the
+    individual filter. Escape option delimiters first, then filtergraph syntax.
+    """
+    option_escaped = "".join(
+        f"\\{char}" if char in "\\':" else char for char in value
+    )
+    return "".join(
+        f"\\{char}" if char in "\\'[];," or char.isspace() else char
+        for char in option_escaped
+    )
+
+
 def ensure_ffmpeg_in_path():
     """Auto-detect FFmpeg if it was installed via winget, scoop, or local paths but not in PATH."""
     current_path = os.environ.get("PATH") or os.environ.get("Path") or ""
     path_parts = current_path.split(os.pathsep) if current_path else []
+
+    configured_ffmpeg = os.environ.get("ECLIPSE_FFMPEG_PATH", "").strip()
+    if configured_ffmpeg and Path(configured_ffmpeg).is_file():
+        ffmpeg_dir = str(Path(configured_ffmpeg).resolve().parent)
+        if ffmpeg_dir not in path_parts:
+            path_parts.insert(0, ffmpeg_dir)
 
     # Ensure Python runtime directories and Scripts are in PATH
     try:
@@ -56,7 +112,7 @@ def ensure_ffmpeg_in_path():
     except Exception:
         pass
 
-    if not shutil.which("ffmpeg"):
+    if not shutil.which(configured_ffmpeg or "ffmpeg"):
         local_app_data = os.environ.get("LOCALAPPDATA", "")
         user_profile = os.environ.get("USERPROFILE", "")
         prog_files = os.environ.get("ProgramFiles", "C:\\Program Files")
@@ -94,6 +150,15 @@ def ensure_ffmpeg_in_path():
 
 
 ensure_ffmpeg_in_path()
+try:
+    _configured_ffmpeg = get_ffmpeg_executable()
+    logger.info("Using FFmpeg executable: %s", _configured_ffmpeg)
+    if not ffmpeg_has_filter(_configured_ffmpeg, "subtitles"):
+        logger.warning(
+            "The selected FFmpeg does not include the subtitles filter; ASS subtitle renders require libass."
+        )
+except RuntimeError as ffmpeg_error:
+    logger.warning("FFmpeg configuration: %s", ffmpeg_error)
 
 # Global lazy-loaded whisper model
 _WHISPER_MODEL = None
@@ -116,7 +181,7 @@ def check_encoder_support(encoder_name: str) -> bool:
     """Check if a specific FFmpeg video encoder is operational on this system."""
     try:
         cmd = [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
             "-f", "lavfi", "-i", "color=c=black:s=1080x1920:d=0.2",
             "-c:v", encoder_name, "-f", "null", "-"
         ]
@@ -307,7 +372,7 @@ def is_valid_mp4(file_path: Union[str, Path]) -> bool:
     # Fallback check using ffmpeg
     try:
         ffmpeg_cmd = [
-            "ffmpeg", "-v", "error",
+            get_ffmpeg_executable(), "-v", "error",
             "-i", str(p),
             "-t", "0.1",
             "-f", "null", "-"
@@ -416,7 +481,7 @@ def compute_audio_energy_heatmap(file_path: Union[str, Path], duration: float, n
     try:
         temp_wav = TEMP_DIR / f"temp_heat_{p.stem}_{int(time.time())}.wav"
         cmd = [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
             "-i", str(p),
             "-vn", "-ac", "1", "-ar", "8000",
             "-f", "wav",
@@ -579,7 +644,7 @@ def download_clip_segment(
         logger.info(f"Slicing local/gdrive video: {local_source} [{start_time:.2f}s -> {end_time:.2f}s] to {output_path}")
         slice_timeout = max(300, min(1200, int(clip_duration * 6) + 90))
         slice_cmd = [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
             "-ss", str(start_time),
             "-to", str(end_time),
             "-i", str(local_source),
@@ -693,7 +758,7 @@ def download_clip_segment(
 
                 trim_timeout = max(240, min(900, int(clip_duration * 4.5) + 60))
                 trim_cmd = [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
                     "-reconnect", "1",
                     "-reconnect_at_eof", "1",
                     "-reconnect_streamed", "1",
@@ -2532,13 +2597,13 @@ def build_ffmpeg_filtergraph(
     # (If ass_subtitles_path is provided, it contains BOTH the title and subtitles rendered with exact matching fonts)
     if ass_subtitles_path and os.path.exists(ass_subtitles_path):
         raw_ass = str(Path(ass_subtitles_path).resolve()).replace("\\", "/")
-        escaped_ass = raw_ass.replace(":", "\\:").replace("'", "'\\''")
+        escaped_ass = _escape_ffmpeg_filter_option(raw_ass)
         if FONTS_DIR.exists() and (any(FONTS_DIR.glob("*.ttf")) or any(FONTS_DIR.glob("*.otf")) or any(FONTS_DIR.glob("*.woff*"))):
             raw_fonts = str(FONTS_DIR.resolve()).replace("\\", "/")
-            escaped_fonts = raw_fonts.replace(":", "\\:").replace("'", "'\\''")
-            sub_filter = f"{current_v}subtitles='{escaped_ass}':fontsdir='{escaped_fonts}'[v_final]"
+            escaped_fonts = _escape_ffmpeg_filter_option(raw_fonts)
+            sub_filter = f"{current_v}subtitles=filename={escaped_ass}:fontsdir={escaped_fonts}[v_final]"
         else:
-            sub_filter = f"{current_v}subtitles='{escaped_ass}'[v_final]"
+            sub_filter = f"{current_v}subtitles=filename={escaped_ass}[v_final]"
         filters.append(sub_filter)
         current_v = "[v_final]"
     elif title_text and title_position != "none":
@@ -2624,6 +2689,14 @@ def render_clip_to_mp4(
     """
     if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:
         raise RuntimeError(f"Input video file is missing or empty: {video_path}")
+
+    ffmpeg_path = get_ffmpeg_executable()
+    if ass_subtitles_path and os.path.exists(ass_subtitles_path) and not ffmpeg_has_filter(ffmpeg_path, "subtitles"):
+        raise RuntimeError(
+            f"The selected FFmpeg binary does not include the 'subtitles' filter: {ffmpeg_path}. "
+            "ECLIPSE needs FFmpeg built with libass to render ASS subtitles. "
+            "Install a compatible FFmpeg build and set ECLIPSE_FFMPEG_PATH in backend/.env."
+        )
 
     if not is_valid_mp4(video_path):
         raise RuntimeError(
@@ -2785,7 +2858,7 @@ def render_clip_to_mp4(
     v_codec_args = chosen_encoder_args
 
     cmd = [
-        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        ffmpeg_path, "-y", "-hide_banner", "-loglevel", "error",
         "-i", str(video_path),
         *extra_input_args,
         "-filter_complex", final_filter_complex,
@@ -2800,9 +2873,6 @@ def render_clip_to_mp4(
     ]
 
     # Check if FFmpeg is installed and accessible
-    if not shutil.which("ffmpeg"):
-        raise RuntimeError("FFmpeg is not installed or not found in system PATH. Please install FFmpeg (e.g. 'winget install Gyan.FFmpeg') and restart your terminal.")
-
     dur = max(1.0, float(clip_duration))
     # Dynamic timeouts scaled to clip duration (e.g. 60s -> 600s / 10m, 120s -> 1080s / 18m, 180s -> 1560s / 26m)
     render_timeout = max(360, min(2400, int(dur * 8) + 120))
@@ -2824,7 +2894,7 @@ def render_clip_to_mp4(
         if chosen_encoder_name != "libx264":
             logger.info(f"Retrying render with universal multi-threaded CPU encoder (libx264, timeout: {cpu_render_timeout}s)...")
             cpu_cmd = [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                ffmpeg_path, "-y", "-hide_banner", "-loglevel", "error",
                 "-i", str(video_path),
                 *extra_input_args,
                 "-filter_complex", final_filter_complex,
@@ -2925,7 +2995,7 @@ def extract_clip_frame(video_url: str, video_id: str, timestamp: float = 0.0) ->
 
     if local_source and local_source.exists():
         cmd = [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
             "-ss", str(target_ts),
             "-i", str(local_source),
             "-vframes", "1",
@@ -2942,7 +3012,7 @@ def extract_clip_frame(video_url: str, video_id: str, timestamp: float = 0.0) ->
     for candidate in local_candidates:
         if candidate.exists() and candidate.stat().st_size > 10000 and "slice_" not in candidate.name and is_valid_mp4(candidate):
             cmd = [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
                 "-ss", "00:00:01.00",
                 "-i", str(candidate),
                 "-vframes", "1",
@@ -2975,7 +3045,7 @@ def extract_clip_frame(video_url: str, video_id: str, timestamp: float = 0.0) ->
         subprocess.run(slice_cmd, capture_output=True, text=True, timeout=20)
         if temp_slice.exists() and temp_slice.stat().st_size > 1000:
             ff_cmd = [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
                 "-ss", "00:00:00.20",
                 "-i", str(temp_slice),
                 "-vframes", "1",

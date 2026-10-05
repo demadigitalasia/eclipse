@@ -1422,7 +1422,7 @@ export default function App() {
         msg.includes('not running')
       ) {
         setError(
-          '🔌 Backend API Server is unreachable (Port 8000).\n' +
+          ' Backend API Server is unreachable (Port 8000).\n' +
           'Please ensure the full app is running in your terminal (`npm run dev`).\n' +
           'If Python dependencies were not installed yet, run: `pip install -r requirements.txt`'
         );
@@ -1644,7 +1644,7 @@ export default function App() {
                 ...prev,
                 [clipKey]: { status: 'ready' }
               }));
-              setToastMessage(`✅ ${clip.title} (raw)`);
+              setToastMessage(` ${clip.title} (raw)`);
               const a = document.createElement("a");
               a.href = statusData.download_url;
               a.download = statusData.filename || `${clip.title} (raw).mp4`;
@@ -1802,7 +1802,7 @@ Transcript:
               setCopyTimestampScope('all');
             }}
           >
-            <span>🌐 {t.results.copyScopeAll}</span>
+            <span> {t.results.copyScopeAll}</span>
             <span className="timestamp-scope-count">{totalCount}</span>
           </button>
           <button
@@ -1813,7 +1813,7 @@ Transcript:
               setCopyTimestampScope('marked');
             }}
           >
-            <span>🔖 {t.results.copyScopeMarked}</span>
+            <span> {t.results.copyScopeMarked}</span>
             <span className="timestamp-scope-count">{markedCount}</span>
           </button>
         </div>
@@ -1821,7 +1821,7 @@ Transcript:
         {/* Empty notice if marked is selected but no clips are marked */}
         {copyTimestampScope === 'marked' && markedCount === 0 && (
           <div className="timestamp-menu-empty-notice">
-            ⚠️ {t.results.noMarkedClipsNotice}
+             {t.results.noMarkedClipsNotice}
           </div>
         )}
 
@@ -1884,7 +1884,7 @@ Transcript:
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result.clips, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `cheat_clip_pro_${result.video_id}.json`);
+    downloadAnchor.setAttribute("download", `eclipse_${result.video_id}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -1899,7 +1899,7 @@ Transcript:
       setTimeout(() => setToastMessage(null), 3000);
       return;
     }
-    
+
     const formatSRTTime = (secs: number): string => {
       const h = Math.floor(secs / 3600);
       const m = Math.floor((secs % 3600) / 60);
@@ -1918,7 +1918,7 @@ Transcript:
     const dataStr = "data:text/plain;charset=utf-8," + encodeURIComponent(srtText);
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `cheat_clip_pro_${result.video_id}.srt`);
+    downloadAnchor.setAttribute("download", `eclipse_${result.video_id}.srt`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -2054,7 +2054,7 @@ Transcript:
             title="Dismiss notification"
             aria-label="Dismiss notification"
           >
-            ✕
+
           </button>
         </div>
       )}
@@ -2062,19 +2062,9 @@ Transcript:
       {/* Header Area */}
       <header className="app-header">
         <div className="header-logo">
-          <span className="logo-emoji">⚡</span>
-          <div>
-            <div className="logo-title-row">
-              <h1 className="text-gradient logo-title">CHEAT CLIP</h1>
-              <span className="pro-badge" title="Cheat Clip Pro Edition">
-                <svg className="pro-badge-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V17H19V19Z" />
-                </svg>
-                PRO
-              </span>
-            </div>
-            <p className="header-subtitle">{t.header.subtitle}</p>
-          </div>
+          <h1 className="eclipse-brand-heading">
+            <img className="eclipse-main-logo" src="/eclipse-logo.png" alt="ECLIPSE — Dema Digital Asia" />
+          </h1>
         </div>
         <div className="header-nav" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
           <button
@@ -2086,9 +2076,9 @@ Transcript:
               fontSize: '0.8rem',
               fontWeight: 600,
               borderRadius: '8px',
-              background: hasCookies ? 'rgba(34, 197, 94, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-              border: hasCookies ? '1px solid rgba(34, 197, 94, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
-              color: hasCookies ? '#4ade80' : 'var(--text-secondary)',
+              background: hasCookies ? 'rgba(172, 172, 172, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+              border: hasCookies ? '1px solid rgba(172, 172, 172, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+              color: hasCookies ? '#c4c4c4' : 'var(--text-secondary)',
               display: 'flex',
               alignItems: 'center',
               gap: '0.4rem',
@@ -2097,7 +2087,7 @@ Transcript:
             }}
             title={hasCookies ? t.header.cookiesTooltipActive : t.header.cookiesTooltipSetup}
           >
-            <span>🍪 {t.header.cookiesBtn}</span>
+            <span> {t.header.cookiesBtn}</span>
             <span style={{ fontSize: '0.7rem', opacity: 0.85 }}>
               {hasCookies ? t.header.cookiesStatusActive : t.header.cookiesStatusSetup}
             </span>
@@ -2123,52 +2113,29 @@ Transcript:
             }}
             title={t.header.clearTempTooltip}
           >
-            <span>🧹 {isClearingGlobalTemp ? t.header.clearingTempBtn : t.header.clearTempBtn}</span>
-          </button>
-          <button
-            type="button"
-            className="cookie-header-btn"
-            onClick={() => setIsUpdateModalOpen(true)}
-            style={{
-              padding: '0.45rem 0.85rem',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            title={t.header.updateBtnTooltip}
-          >
-            <span>🔄 {t.header.updateBtn}</span>
+            <span> {isClearingGlobalTemp ? t.header.clearingTempBtn : t.header.clearTempBtn}</span>
           </button>
           <LanguageSwitcher />
-          <a
-            href="https://tako.id/johansa"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="glowing-btn"
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '0.8rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              boxShadow: '0 4px 12px rgba(255, 94, 58, 0.2)',
-              background: 'linear-gradient(135deg, var(--secondary) 0%, #f43f5e 100%)'
-            }}
-          >
-            🐈‍⬛ {t.header.supportProject}
-          </a>
         </div>
       </header>
 
       {/* Main Form controls panel */}
       <section className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="dema-intro">
+          <div className="dema-intro-copy">
+            <span className="dema-eyebrow"><span className="dema-eyebrow-rule" />{t.header.heroEyebrow}</span>
+            <h2>{t.header.heroTitle}</h2>
+            <p>{t.header.heroBody}</p>
+          </div>
+          <div className="dema-waveform" aria-hidden="true">
+            <svg viewBox="0 0 340 92" fill="none" preserveAspectRatio="none">
+              <path d="M0 47h18l8-17 10 38 11-54 12 71 11-43 10 10h15l9-27 10 51 11-66 12 72 11-37 9 18h16l9-28 11 43 10-57 12 69 10-39 11 14h16l10-24 11 44 10-60 12 64 10-29 8 13h24" stroke="#626262" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M239 47h45" stroke="#949494" strokeWidth="3" strokeLinecap="round" />
+              <circle cx="284" cy="47" r="5" fill="#949494" />
+            </svg>
+            <span className="dema-waveform-tag">FRAME 01 <i /> FRAME 02</span>
+          </div>
+        </div>
         <form onSubmit={handleAnalyze} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Source Selector Tabs: YouTube vs Google Drive vs Upload Video File */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
@@ -2187,17 +2154,17 @@ Transcript:
                 gap: '0.5rem',
                 padding: '0.55rem 1.1rem',
                 borderRadius: '10px',
-                border: sourceMode === 'youtube' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(255,255,255,0.08)',
-                background: sourceMode === 'youtube' ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.08) 100%)' : 'rgba(255,255,255,0.03)',
-                color: sourceMode === 'youtube' ? '#fff' : 'var(--text-secondary)',
+                border: sourceMode === 'youtube' ? '1px solid rgba(132, 132, 132, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                background: sourceMode === 'youtube' ? 'linear-gradient(135deg, rgba(132, 132, 132, 0.2) 0%, rgba(114, 114, 114, 0.08) 100%)' : 'rgba(255, 255, 255, 0.03)',
+                color: sourceMode === 'youtube' ? '#ffffff' : 'var(--text-secondary)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: '0.85rem',
                 transition: 'all 0.2s ease',
-                boxShadow: sourceMode === 'youtube' ? '0 0 15px rgba(239, 68, 68, 0.2)' : 'none'
+                boxShadow: sourceMode === 'youtube' ? '0 0 15px rgba(132, 132, 132, 0.2)' : 'none'
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#ef4444' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#848484' }}>
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
               </svg>
               {t.form.tabYoutube}
@@ -2218,23 +2185,23 @@ Transcript:
                 gap: '0.5rem',
                 padding: '0.55rem 1.1rem',
                 borderRadius: '10px',
-                border: sourceMode === 'gdrive' ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid rgba(255,255,255,0.08)',
-                background: sourceMode === 'gdrive' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.08) 100%)' : 'rgba(255,255,255,0.03)',
-                color: sourceMode === 'gdrive' ? '#fff' : 'var(--text-secondary)',
+                border: sourceMode === 'gdrive' ? '1px solid rgba(163, 163, 163, 0.45)' : '1px solid rgba(255, 255, 255, 0.08)',
+                background: sourceMode === 'gdrive' ? 'linear-gradient(135deg, rgba(163, 163, 163, 0.2) 0%, rgba(131, 131, 131, 0.08) 100%)' : 'rgba(255, 255, 255, 0.03)',
+                color: sourceMode === 'gdrive' ? '#ffffff' : 'var(--text-secondary)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: '0.85rem',
                 transition: 'all 0.2s ease',
-                boxShadow: sourceMode === 'gdrive' ? '0 0 15px rgba(16, 185, 129, 0.2)' : 'none'
+                boxShadow: sourceMode === 'gdrive' ? '0 0 15px rgba(163, 163, 163, 0.2)' : 'none'
               }}
             >
               <svg width="17" height="17" viewBox="0 0 87.3 78" fill="none">
-                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00ac47"/>
-                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.1z" fill="#ea4335"/>
-                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-                <path d="m59.8 53h27.5c0-1.55-.4-3.1-1.2-4.5l-25.4-44c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8z" fill="#ffba00"/>
-                <path d="m73.55 76.8c1.35 0 2.9-.4 4.25-1.2l-14.1-22.6H27.5l13.75 23.8h32.3z" fill="#2684fc"/>
+                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#6b6b6b"/>
+                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#959595"/>
+                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.1z" fill="#808080"/>
+                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#717171"/>
+                <path d="m59.8 53h27.5c0-1.55-.4-3.1-1.2-4.5l-25.4-44c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8z" fill="#c6c6c6"/>
+                <path d="m73.55 76.8c1.35 0 2.9-.4 4.25-1.2l-14.1-22.6H27.5l13.75 23.8h32.3z" fill="#868686"/>
               </svg>
               {t.form.tabGdrive}
             </button>
@@ -2254,21 +2221,16 @@ Transcript:
                 gap: '0.5rem',
                 padding: '0.55rem 1.1rem',
                 borderRadius: '10px',
-                border: sourceMode === 'upload' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255,255,255,0.08)',
-                background: sourceMode === 'upload' ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.08) 100%)' : 'rgba(255,255,255,0.03)',
-                color: sourceMode === 'upload' ? '#fff' : 'var(--text-secondary)',
+                border: sourceMode === 'upload' ? '1px solid rgba(133, 133, 133, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                background: sourceMode === 'upload' ? 'linear-gradient(135deg, rgba(133, 133, 133, 0.2) 0%, rgba(109, 109, 109, 0.08) 100%)' : 'rgba(255, 255, 255, 0.03)',
+                color: sourceMode === 'upload' ? '#ffffff' : 'var(--text-secondary)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: '0.85rem',
                 transition: 'all 0.2s ease',
-                boxShadow: sourceMode === 'upload' ? '0 0 15px rgba(59, 130, 246, 0.2)' : 'none'
+                boxShadow: sourceMode === 'upload' ? '0 0 15px rgba(133, 133, 133, 0.2)' : 'none'
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#3b82f6' }}>
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
               {t.form.tabUpload}
             </button>
           </div>
@@ -2305,9 +2267,6 @@ Transcript:
                   </>
                 ) : (
                   <>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                    </svg>
                     {t.form.hackClips}
                   </>
                 )}
@@ -2331,7 +2290,7 @@ Transcript:
                   required={sourceMode === 'gdrive'}
                 />
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
-                  💡 {t.form.gdriveNotice}
+                   {t.form.gdriveNotice}
                 </span>
               </div>
               <button
@@ -2350,9 +2309,6 @@ Transcript:
                   </>
                 ) : (
                   <>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                    </svg>
                     {t.form.hackClips}
                   </>
                 )}
@@ -2404,8 +2360,8 @@ Transcript:
                     gap: '0.85rem',
                     padding: '2.5rem 1.5rem',
                     borderRadius: '14px',
-                    border: isDragOverVideo ? '2px dashed #3b82f6' : '2px dashed rgba(255, 255, 255, 0.15)',
-                    background: isDragOverVideo ? 'rgba(59, 130, 246, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                    border: isDragOverVideo ? '2px dashed #858585' : '2px dashed rgba(255, 255, 255, 0.15)',
+                    background: isDragOverVideo ? 'rgba(133, 133, 133, 0.12)' : 'rgba(255, 255, 255, 0.02)',
                     cursor: 'pointer',
                     transition: 'all 0.25s ease'
                   }}
@@ -2414,11 +2370,11 @@ Transcript:
                     width: '56px',
                     height: '56px',
                     borderRadius: '50%',
-                    background: 'rgba(59, 130, 246, 0.15)',
+                    background: 'rgba(133, 133, 133, 0.15)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#60a5fa'
+                    color: '#a2a2a2'
                   }}>
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polygon points="23 7 16 12 23 17 23 7"></polygon>
@@ -2440,9 +2396,9 @@ Transcript:
                       marginTop: '0.25rem',
                       padding: '0.45rem 1.2rem',
                       borderRadius: '8px',
-                      background: 'rgba(59, 130, 246, 0.2)',
-                      border: '1px solid rgba(59, 130, 246, 0.4)',
-                      color: '#93c5fd',
+                      background: 'rgba(133, 133, 133, 0.2)',
+                      border: '1px solid rgba(133, 133, 133, 0.4)',
+                      color: '#c1c1c1',
                       fontSize: '0.82rem',
                       fontWeight: 600
                     }}
@@ -2457,8 +2413,8 @@ Transcript:
                   justifyContent: 'space-between',
                   padding: '1.25rem 1.5rem',
                   borderRadius: '12px',
-                  background: 'rgba(59, 130, 246, 0.08)',
-                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  background: 'rgba(133, 133, 133, 0.08)',
+                  border: '1px solid rgba(133, 133, 133, 0.25)',
                   flexWrap: 'wrap',
                   gap: '1rem'
                 }}>
@@ -2467,11 +2423,11 @@ Transcript:
                       width: '44px',
                       height: '44px',
                       borderRadius: '10px',
-                      background: 'rgba(59, 130, 246, 0.2)',
+                      background: 'rgba(133, 133, 133, 0.2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#60a5fa',
+                      color: '#a2a2a2',
                       flexShrink: 0
                     }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2492,13 +2448,13 @@ Transcript:
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem', alignItems: 'center' }}>
                         {uploadedVideoFile && (
-                          <span>📦 {(uploadedVideoFile.size / (1024 * 1024)).toFixed(1)} MB</span>
+                          <span> {(uploadedVideoFile.size / (1024 * 1024)).toFixed(1)} MB</span>
                         )}
                         {uploadedVideoInfo && uploadedVideoInfo.duration > 0 && (
-                          <span>⏱ {Math.round(uploadedVideoInfo.duration)}s</span>
+                          <span> {Math.round(uploadedVideoInfo.duration)}s</span>
                         )}
                         <span>•</span>
-                        <span style={{ color: '#10b981', fontWeight: 600 }}>✨ Whisper AI Auto-Transcribe</span>
+                        <span style={{ color: '#a3a3a3', fontWeight: 600 }}> Whisper AI Auto-Transcribe</span>
                       </div>
                     </div>
                   </div>
@@ -2565,15 +2521,15 @@ Transcript:
             {/* Card 1: AI Engine Configuration */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
               <h3 style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-                🤖 {t.form.aiSettingsTitle}
+                 {t.form.aiSettingsTitle}
               </h3>
-              
+
               {/* API Key input — required */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                   <span>
                     {t.form.apiKeyLabel}
-                    <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '4px', padding: '0.1rem 0.35rem', letterSpacing: '0.04em' }}>{t.form.apiKeyRequired}</span>
+                    <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', fontWeight: 700, color: '#9b9b9b', background: 'rgba(132, 132, 132, 0.12)', border: '1px solid rgba(132, 132, 132, 0.3)', borderRadius: '4px', padding: '0.1rem 0.35rem', letterSpacing: '0.04em' }}>{t.form.apiKeyRequired}</span>
                   </span>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <a
@@ -2583,9 +2539,9 @@ Transcript:
                       style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600, transition: 'var(--transition-smooth)' }}
                       className="action-link-btn"
                     >
-                      🔑 {t.form.getFreeKey}
+                       {t.form.getFreeKey}
                     </a>
-                    <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.75rem' }}>|</span>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.15)', fontSize: '0.75rem' }}>|</span>
                     <span
                       onClick={() => setShowApiKey(!showApiKey)}
                       style={{ cursor: 'pointer', color: 'var(--primary)', fontSize: '0.75rem' }}
@@ -2610,7 +2566,7 @@ Transcript:
                   style={{ height: '42px' }}
                 />
                 {!apiKey.trim() && (
-                  <span style={{ fontSize: '0.75rem', color: '#f87171', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#9b9b9b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     {t.form.apiKeyErrorHint}
                   </span>
@@ -2623,7 +2579,7 @@ Transcript:
                   <span>{t.form.aiModelLabel}</span>
                   {loadingModels && (
                     <span style={{ fontSize: '0.72rem', color: 'var(--primary)', animation: 'pulse 1.5s infinite ease-in-out' }}>
-                      ⌛ {t.form.fetchingModels}
+                       {t.form.fetchingModels}
                     </span>
                   )}
                 </label>
@@ -2635,27 +2591,27 @@ Transcript:
                     localStorage.setItem('cheat_clip_selected_model', e.target.value);
                   }}
                   disabled={loading}
-                  style={{ padding: '0.6rem 1rem', fontSize: '0.875rem', height: '42px', cursor: 'pointer', appearance: 'auto', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+                  style={{ padding: '0.6rem 1rem', fontSize: '0.875rem', height: '42px', cursor: 'pointer', appearance: 'auto', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
                 >
                   {availableModels.length > 0 ? (
                     availableModels.map((m) => (
-                      <option key={m} value={m} style={{ background: '#0d1324', color: '#fff' }}>
+                      <option key={m} value={m} style={{ background: '#141414', color: '#ffffff' }}>
                         {m}
                       </option>
                     ))
                   ) : (
                     <>
-                      <option value="gemini-2.5-flash" style={{ background: '#0d1324', color: '#fff' }}>gemini-2.5-flash (Fast & recommended - Free tier friendly)</option>
-                      <option value="gemini-2.5-flash-lite" style={{ background: '#0d1324', color: '#fff' }}>gemini-2.5-flash-lite (Ultra-fast & lightweight)</option>
-                      <option value="gemini-2.0-flash" style={{ background: '#0d1324', color: '#fff' }}>gemini-2.0-flash (Fast & responsive)</option>
-                      <option value="gemini-2.0-flash-lite" style={{ background: '#0d1324', color: '#fff' }}>gemini-2.0-flash-lite (Lightweight flash)</option>
-                      <option value="gemini-1.5-flash" style={{ background: '#0d1324', color: '#fff' }}>gemini-1.5-flash (Fallback flash)</option>
-                      <option value="gemini-2.5-pro" style={{ background: '#0d1324', color: '#fff' }}>gemini-2.5-pro (Creative & complex - High quota)</option>
+                      <option value="gemini-2.5-flash" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.5-flash (Fast & recommended - Free tier friendly)</option>
+                      <option value="gemini-2.5-flash-lite" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.5-flash-lite (Ultra-fast & lightweight)</option>
+                      <option value="gemini-2.0-flash" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.0-flash (Fast & responsive)</option>
+                      <option value="gemini-2.0-flash-lite" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.0-flash-lite (Lightweight flash)</option>
+                      <option value="gemini-1.5-flash" style={{ background: '#141414', color: '#ffffff' }}>gemini-1.5-flash (Fallback flash)</option>
+                      <option value="gemini-2.5-pro" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.5-pro (Creative & complex - High quota)</option>
                     </>
                   )}
                 </select>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4, marginTop: '0.2rem' }}>
-                  💡 <strong>{t.form.resilienceTip}</strong> {t.form.resilienceDesc}
+                   <strong>{t.form.resilienceTip}</strong> {t.form.resilienceDesc}
                 </span>
               </div>
             </div>
@@ -2663,7 +2619,7 @@ Transcript:
             {/* Card 2: Clip Parameters & Focus */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
               <h3 style={{ fontSize: '0.9rem', color: 'var(--secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-                ⚡ {t.form.clipCustomizationTitle}
+                 {t.form.clipCustomizationTitle}
               </h3>
 
               {/* Preferred Duration Selector */}
@@ -2717,7 +2673,7 @@ Transcript:
                 </div>
                 {durationPref === 'auto' && (
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: '0.1rem' }}>
-                    💡 {t.form.durAutoTip}
+                     {t.form.durAutoTip}
                   </span>
                 )}
               </div>
@@ -2748,8 +2704,8 @@ Transcript:
                     fontSize: '0.8rem',
                     fontWeight: 700,
                     color: 'var(--secondary)',
-                    background: 'rgba(255, 94, 58, 0.12)',
-                    border: '1px solid rgba(255, 94, 58, 0.3)',
+                    background: 'rgba(148, 148, 148, 0.12)',
+                    border: '1px solid rgba(148, 148, 148, 0.3)',
                     borderRadius: '6px',
                     padding: '0.1rem 0.5rem'
                   }}>
@@ -2811,12 +2767,12 @@ Transcript:
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: '20px', textAlign: 'right' }}>50</span>
                     </div>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
-                      💡 {t.form.clipCountTip(targetClipCount, targetClipCount <= 5 ? `${Math.max(1, targetClipCount - 1)}-${targetClipCount + 2}` : targetClipCount <= 10 ? `${Math.max(1, targetClipCount - 2)}-${targetClipCount + 3}` : `${targetClipCount - 5}-${targetClipCount + 5}`)}
+                       {t.form.clipCountTip(targetClipCount, targetClipCount <= 5 ? `${Math.max(1, targetClipCount - 1)}-${targetClipCount + 2}` : targetClipCount <= 10 ? `${Math.max(1, targetClipCount - 2)}-${targetClipCount + 3}` : `${targetClipCount - 5}-${targetClipCount + 5}`)}
                     </span>
                   </>
                 ) : (
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: '0.1rem' }}>
-                    💡 {t.form.clipCountAutoTip}
+                     {t.form.clipCountAutoTip}
                   </span>
                 )}
               </div>
@@ -2894,7 +2850,7 @@ Transcript:
                   </label>
                   {manualSubtitlesFileName && (
                     <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '500' }}>
-                      📄 {manualSubtitlesFileName}
+                       {manualSubtitlesFileName}
                     </span>
                   )}
                 </div>
@@ -2903,7 +2859,7 @@ Transcript:
 
             {subtitlesSource === 'youtube' && (
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8, display: 'block', marginTop: '0.15rem', lineHeight: '1.4' }}>
-                💡 <strong>{t.form.subtitlesTipTitle}</strong> {t.form.subtitlesTipDesc} <a href="https://downsub.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary)', textDecoration: 'underline', fontWeight: '500' }}>downsub.com</a> {t.form.andUploadOption}
+                 <strong>{t.form.subtitlesTipTitle}</strong> {t.form.subtitlesTipDesc} <a href="https://downsub.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary)', textDecoration: 'underline', fontWeight: '500' }}>downsub.com</a> {t.form.andUploadOption}
               </span>
             )}
           </div>
@@ -2980,20 +2936,20 @@ Transcript:
               style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}
               onClick={() => setShowHistory(h => !h)}
             >
-              <span style={{ fontSize: '1.5rem', filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.5))' }}>🎬</span>
+              <span style={{ fontSize: '1.5rem', filter: 'drop-shadow(0 0 8px rgba(128, 128, 128, 0.5))' }}></span>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                     {t.form.previouslyAnalyzed}
                   </h3>
                   <span style={{
-                    background: 'rgba(168, 85, 247, 0.2)',
-                    color: '#c084fc',
+                    background: 'rgba(128, 128, 128, 0.2)',
+                    color: '#9f9f9f',
                     fontSize: '0.75rem',
                     fontWeight: 700,
                     padding: '0.15rem 0.65rem',
                     borderRadius: '9999px',
-                    border: '1px solid rgba(168, 85, 247, 0.45)'
+                    border: '1px solid rgba(128, 128, 128, 0.45)'
                   }}>
                     {history.length}
                   </span>
@@ -3009,7 +2965,7 @@ Transcript:
               {/* Search Bar */}
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <span style={{ position: 'absolute', left: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)', pointerEvents: 'none' }}>
-                  🔍
+
                 </span>
                 <input
                   type="text"
@@ -3035,7 +2991,7 @@ Transcript:
                     }}
                     title={t.form.clearSearch}
                   >
-                    ✕
+
                   </button>
                 )}
               </div>
@@ -3046,14 +3002,14 @@ Transcript:
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.45rem',
-                  background: 'rgba(239, 68, 68, 0.12)',
+                  background: 'rgba(132, 132, 132, 0.12)',
                   padding: '0.25rem 0.55rem',
                   borderRadius: '8px',
-                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  border: '1px solid rgba(132, 132, 132, 0.35)',
                   animation: 'fadeIn 0.2s ease'
                 }}>
-                  <span style={{ fontSize: '0.74rem', color: '#fca5a5', fontWeight: 600 }}>
-                    ⚠️ {t.form.areYouSure}
+                  <span style={{ fontSize: '0.74rem', color: '#bcbcbc', fontWeight: 600 }}>
+                     {t.form.areYouSure}
                   </span>
                   <button
                     type="button"
@@ -3063,8 +3019,8 @@ Transcript:
                     }}
                     style={{
                       fontSize: '0.74rem',
-                      color: '#fff',
-                      background: '#ef4444',
+                      color: '#ffffff',
+                      background: '#848484',
                       border: 'none',
                       borderRadius: '6px',
                       padding: '0.25rem 0.55rem',
@@ -3073,10 +3029,10 @@ Transcript:
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.2rem',
-                      boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)'
+                      boxShadow: '0 2px 8px rgba(132, 132, 132, 0.4)'
                     }}
                   >
-                    ✓ {t.form.confirmClear}
+                     {t.form.confirmClear}
                   </button>
                   <button
                     type="button"
@@ -3092,7 +3048,7 @@ Transcript:
                       fontWeight: 500
                     }}
                   >
-                    ✕ {t.form.cancel}
+                     {t.form.cancel}
                   </button>
                 </div>
               ) : (
@@ -3101,9 +3057,9 @@ Transcript:
                   onClick={() => setConfirmClearAll(true)}
                   style={{
                     fontSize: '0.75rem',
-                    color: '#f87171',
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#9b9b9b',
+                    background: 'rgba(132, 132, 132, 0.1)',
+                    border: '1px solid rgba(132, 132, 132, 0.3)',
                     borderRadius: '8px',
                     padding: '0.45rem 0.75rem',
                     cursor: 'pointer',
@@ -3163,7 +3119,7 @@ Transcript:
                   borderRadius: '12px',
                   border: '1px dashed rgba(255, 255, 255, 0.1)'
                 }}>
-                  <span style={{ fontSize: '1.75rem', display: 'block', marginBottom: '0.5rem' }}>🔍</span>
+                  <span style={{ fontSize: '1.75rem', display: 'block', marginBottom: '0.5rem' }}></span>
                   <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                     {t.form.noHistoryMatch}
                   </p>
@@ -3174,9 +3130,9 @@ Transcript:
                       style={{
                         marginTop: '0.75rem',
                         fontSize: '0.78rem',
-                        background: 'rgba(168, 85, 247, 0.15)',
-                        border: '1px solid rgba(168, 85, 247, 0.35)',
-                        color: '#c084fc',
+                        background: 'rgba(128, 128, 128, 0.15)',
+                        border: '1px solid rgba(128, 128, 128, 0.35)',
+                        color: '#9f9f9f',
                         borderRadius: '6px',
                         padding: '0.35rem 0.8rem',
                         cursor: 'pointer'
@@ -3207,14 +3163,14 @@ Transcript:
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="84" height="48" viewBox="0 0 84 48"><rect width="84" height="48" fill="%231e1e2d"/><polygon points="36,18 52,24 36,30" fill="%236366f1"/></svg>';
                             }}
-                            style={{ width: '84px', height: '48px', objectFit: 'cover', borderRadius: '7px', background: '#111', display: 'block' }}
+                            style={{ width: '84px', height: '48px', objectFit: 'cover', borderRadius: '7px', background: '#111111', display: 'block' }}
                           />
                           <span style={{
                             position: 'absolute',
                             bottom: '3px',
                             right: '3px',
                             background: 'rgba(0, 0, 0, 0.75)',
-                            color: '#fff',
+                            color: '#ffffff',
                             fontSize: '0.65rem',
                             fontWeight: 700,
                             padding: '0.1rem 0.3rem',
@@ -3240,9 +3196,9 @@ Transcript:
                           <div style={{ display: 'flex', gap: '0.65rem', marginTop: '0.25rem', fontSize: '0.74rem', color: 'var(--text-muted)', flexWrap: 'wrap', alignItems: 'center' }}>
                             <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>{t.form.clipsCountMeta(entry.clip_count)}</span>
                             <span>•</span>
-                            <span>⏱ {entry.duration_pref === 'auto' ? 'Auto' : entry.duration_pref}</span>
+                            <span> {entry.duration_pref === 'auto' ? 'Auto' : entry.duration_pref}</span>
                             <span>•</span>
-                            <span>🕓 {formatRelativeTime(entry.analyzed_at)}</span>
+                            <span> {formatRelativeTime(entry.analyzed_at)}</span>
                             <span>•</span>
                             {entry.source_type === 'gdrive' ? (
                               <a
@@ -3250,13 +3206,13 @@ Transcript:
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ color: '#10b981', textDecoration: 'none', opacity: 0.9, fontWeight: 600 }}
+                                style={{ color: '#a3a3a3', textDecoration: 'none', opacity: 0.9, fontWeight: 600 }}
                               >
-                                🔗 Google Drive
+                                 Google Drive
                               </a>
                             ) : entry.source_type === 'upload' ? (
-                              <span style={{ color: '#3b82f6', opacity: 0.9, fontWeight: 600 }}>
-                                📁 Local Video
+                              <span style={{ color: '#858585', opacity: 0.9, fontWeight: 600 }}>
+                                 Local Video
                               </span>
                             ) : (
                               <a
@@ -3266,21 +3222,21 @@ Transcript:
                                 onClick={(e) => e.stopPropagation()}
                                 style={{ color: 'var(--primary)', textDecoration: 'none', opacity: 0.85, fontWeight: 600 }}
                               >
-                                🔗 YouTube
+                                 YouTube
                               </a>
                             )}
                           </div>
 
                           {/* Matched clip/quote search preview */}
                           {matchedClip && (
-                            <div style={{ fontSize: '0.72rem', color: '#c084fc', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <span style={{ fontWeight: 600 }}>✨ {t.form.matchedClipLabel}:</span>
+                            <div style={{ fontSize: '0.72rem', color: '#9f9f9f', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span style={{ fontWeight: 600 }}> {t.form.matchedClipLabel}:</span>
                               <span style={{ fontStyle: 'italic', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>"{matchedClip}"</span>
                             </div>
                           )}
                           {matchedQuote && (
-                            <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <span style={{ fontWeight: 600 }}>💬 {t.form.matchedQuoteLabel}:</span>
+                            <div style={{ fontSize: '0.72rem', color: '#b1b1b1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span style={{ fontWeight: 600 }}> {t.form.matchedQuoteLabel}:</span>
                               <span style={{ fontStyle: 'italic', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>"{matchedQuote}"</span>
                             </div>
                           )}
@@ -3292,9 +3248,9 @@ Transcript:
                             type="button"
                             onClick={(e) => { e.stopPropagation(); loadFromHistory(entry); }}
                             style={{
-                              background: 'rgba(168, 85, 247, 0.15)',
-                              border: '1px solid rgba(168, 85, 247, 0.4)',
-                              color: '#c084fc',
+                              background: 'rgba(128, 128, 128, 0.15)',
+                              border: '1px solid rgba(128, 128, 128, 0.4)',
+                              color: '#9f9f9f',
                               borderRadius: '6px',
                               padding: '0.35rem 0.75rem',
                               fontSize: '0.75rem',
@@ -3305,15 +3261,15 @@ Transcript:
                               gap: '0.3rem'
                             }}
                           >
-                            ▶ {t.form.loadVideo}
+                             {t.form.loadVideo}
                           </button>
                           <button
                             type="button"
                             onClick={(e) => deleteHistoryEntry(entry, e)}
                             style={{
-                              background: 'rgba(239, 68, 68, 0.08)',
-                              border: '1px solid rgba(239, 68, 68, 0.25)',
-                              color: '#ef4444',
+                              background: 'rgba(132, 132, 132, 0.08)',
+                              border: '1px solid rgba(132, 132, 132, 0.25)',
+                              color: '#848484',
                               borderRadius: '6px',
                               padding: '0.35rem 0.55rem',
                               cursor: 'pointer',
@@ -3321,7 +3277,7 @@ Transcript:
                             }}
                             title={t.form.removeFromHistory}
                           >
-                            ✕
+
                           </button>
                         </div>
                       </div>
@@ -3336,11 +3292,11 @@ Transcript:
 
       {/* Error state */}
       {error && (
-        <section className="glass-panel" style={{ borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)' }}>
+        <section className="glass-panel" style={{ borderColor: 'rgba(132, 132, 132, 0.3)', background: 'rgba(132, 132, 132, 0.05)' }}>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '1.5rem', color: '#ef4444', lineHeight: 1, marginTop: '2px' }}>⚠️</span>
+            <span style={{ fontSize: '1.5rem', color: '#848484', lineHeight: 1, marginTop: '2px' }}></span>
             <div style={{ flex: 1 }}>
-              <h4 style={{ color: '#ef4444', margin: 0, fontSize: '1rem', fontWeight: 700 }}>{t.errors.analysisFailed}</h4>
+              <h4 style={{ color: '#848484', margin: 0, fontSize: '1rem', fontWeight: 700 }}>{t.errors.analysisFailed}</h4>
               {/* Subtitle failure actions */}
               {(error.toLowerCase().includes("subtitle") || error.toLowerCase().includes("transcript")) ? (
                 <>
@@ -3376,7 +3332,7 @@ Transcript:
                         cursor: 'pointer'
                       }}
                     >
-                      <span className={loading ? "spinner-icon" : ""}>🔄</span>
+                      <span className={loading ? "spinner-icon" : ""}></span>
                       {t.errors.tryAgain || "Try Again"}
                     </button>
                     <button
@@ -3400,11 +3356,11 @@ Transcript:
                         gap: '0.35rem'
                       }}
                     >
-                      📄 {t.form.uploadCustomSubtitles}
+                       {t.form.uploadCustomSubtitles}
                     </button>
                   </div>
-                  <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', borderLeft: '3px solid #f59e0b', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                    💡 <strong>Tip:</strong> {t.errors.noSubtitlesTip}
+                  <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', borderLeft: '3px solid #b1b1b1', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                     <strong>Tip:</strong> {t.errors.noSubtitlesTip}
                   </div>
                 </>
               ) : (
@@ -3424,9 +3380,9 @@ Transcript:
                           }
                         }}
                         style={{
-                          background: 'rgba(239, 68, 68, 0.15)',
-                          border: '1px solid rgba(239, 68, 68, 0.4)',
-                          color: '#fca5a5',
+                          background: 'rgba(132, 132, 132, 0.15)',
+                          border: '1px solid rgba(132, 132, 132, 0.4)',
+                          color: '#bcbcbc',
                           borderRadius: '8px',
                           padding: '0.4rem 0.85rem',
                           fontSize: '0.8rem',
@@ -3438,7 +3394,7 @@ Transcript:
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        🔑 {t.errors.changeApiKeyAction}
+                         {t.errors.changeApiKeyAction}
                       </button>
                       <a
                         href="https://aistudio.google.com/app/apikey"
@@ -3513,7 +3469,7 @@ Transcript:
             <div className="stepper-container">
               {/* Step 1 */}
               <div className={`step-item ${currentStep === 1 ? 'active' : currentStep > 1 ? 'completed' : ''}`}>
-                <div className="step-circle">{currentStep > 1 ? '✓' : '1'}</div>
+                <div className="step-circle">{currentStep > 1 ? '' : '1'}</div>
                 <div className="step-content">
                   <div className="step-header-row">
                     <span className="step-label">{t.loading.step1Label}</span>
@@ -3535,7 +3491,7 @@ Transcript:
 
               {/* Step 2 */}
               <div className={`step-item ${currentStep === 2 ? 'active' : currentStep > 2 ? 'completed' : ''}`}>
-                <div className="step-circle">{currentStep > 2 ? '✓' : '2'}</div>
+                <div className="step-circle">{currentStep > 2 ? '' : '2'}</div>
                 <div className="step-content">
                   <div className="step-header-row">
                     <span className="step-label">{t.loading.step2Label}</span>
@@ -3557,7 +3513,7 @@ Transcript:
 
               {/* Step 3 */}
               <div className={`step-item ${currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : ''}`}>
-                <div className="step-circle">{currentStep > 3 ? '✓' : '3'}</div>
+                <div className="step-circle">{currentStep > 3 ? '' : '3'}</div>
                 <div className="step-content">
                   <div className="step-header-row">
                     <span className="step-label">{t.loading.step3Label}</span>
@@ -3578,15 +3534,15 @@ Transcript:
                         alignItems: 'center',
                         gap: '0.4rem',
                         padding: '0.2rem 0.6rem',
-                        background: 'rgba(59, 130, 246, 0.12)',
-                        border: '1px solid rgba(59, 130, 246, 0.25)',
+                        background: 'rgba(133, 133, 133, 0.12)',
+                        border: '1px solid rgba(133, 133, 133, 0.25)',
                         borderRadius: '6px',
                         fontSize: '0.75rem',
-                        color: '#60a5fa',
+                        color: '#a2a2a2',
                         fontWeight: 600,
                         width: 'fit-content'
                       }}>
-                        <span className="spinner-icon" style={{ fontSize: '0.75rem' }}>🔄</span>
+                        <span className="spinner-icon" style={{ fontSize: '0.75rem' }}></span>
                         <span>{aiStage || t.loading.step3Label}</span>
                       </div>
                       <span className="step-subtext" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
@@ -3599,7 +3555,7 @@ Transcript:
 
               {/* Step 4 */}
               <div className={`step-item ${currentStep === 4 ? 'active' : ''}`}>
-                <div className="step-circle">{currentStep > 4 ? '✓' : '4'}</div>
+                <div className="step-circle">{currentStep > 4 ? '' : '4'}</div>
                 <div className="step-content">
                   <div className="step-header-row">
                     <span className="step-label">{t.loading.step4Label}</span>
@@ -3618,7 +3574,7 @@ Transcript:
                     <div className="ai-activity-card">
                       <div className="ai-activity-topbar">
                         <div className="ai-engine-badge">
-                          <span style={{ fontSize: '0.85rem' }}>⚡</span>
+                          <span style={{ fontSize: '0.85rem' }}></span>
                           <span>{t.loading.aiEngineBadge}</span>
                           {activeProcessingModel && (
                             <span style={{ opacity: 0.85, fontWeight: 500 }}>({activeProcessingModel})</span>
@@ -3631,7 +3587,7 @@ Transcript:
 
                       <div>
                         <div className="ai-stage-title">
-                          <span style={{ animation: 'spin 2.5s linear infinite', display: 'inline-block' }}>🧠</span>
+                          <span style={{ animation: 'spin 2.5s linear infinite', display: 'inline-block' }}></span>
                           <span>{aiStage || t.loading.synthesizingHighlights}</span>
                         </div>
                       </div>
@@ -3662,7 +3618,7 @@ Transcript:
             </div>
 
             <div style={{ marginTop: '1.75rem', textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              <span className="pulsing-text">⚙️ {loadingDetails}</span>
+              <span className="pulsing-text"> {loadingDetails}</span>
             </div>
           </div>
         </section>
@@ -3693,7 +3649,7 @@ Transcript:
                       height: '100%',
                       borderRadius: '8px',
                       objectFit: 'contain',
-                      background: '#000',
+                      background: '#000000',
                       zIndex: 2
                     }}
                     onTimeUpdate={(e) => {
@@ -3755,8 +3711,8 @@ Transcript:
                     padding: '0.5rem 1rem',
                     borderRadius: '8px',
                     cursor: isDownloadingRaw ? 'not-allowed' : 'pointer',
-                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.45) 100%)',
-                    border: '1px solid rgba(59, 130, 246, 0.5)',
+                    background: 'linear-gradient(135deg, rgba(133, 133, 133, 0.25) 0%, rgba(109, 109, 109, 0.45) 100%)',
+                    border: '1px solid rgba(133, 133, 133, 0.5)',
                     color: '#ffffff',
                     fontWeight: 600
                   }}
@@ -3780,7 +3736,7 @@ Transcript:
                   <div className="progress-card-header">
                     <span className="progress-card-title">
                       {rawDownloadProgress.status === 'ready' ? (
-                        <span style={{ color: '#4ade80' }}>✅ {t.rawDownload.readyBadge}</span>
+                        <span style={{ color: '#c4c4c4' }}> {t.rawDownload.readyBadge}</span>
                       ) : (
                         <>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="spinner-icon">
@@ -3799,7 +3755,7 @@ Transcript:
                       className="progress-fill-bar"
                       style={{
                         width: `${Math.min(100, Math.max(0, rawDownloadProgress.percent))}%`,
-                        background: rawDownloadProgress.status === 'ready' ? 'linear-gradient(90deg, #22c55e 0%, #4ade80 100%)' : undefined
+                        background: rawDownloadProgress.status === 'ready' ? 'linear-gradient(90deg, #acacac 0%, #c4c4c4 100%)' : undefined
                       }}
                     />
                   </div>
@@ -3839,10 +3795,10 @@ Transcript:
                               style={{
                                 color: 'var(--accent)',
                                 fontWeight: '600',
-                                background: 'rgba(16, 185, 129, 0.1)',
+                                background: 'rgba(163, 163, 163, 0.1)',
                                 padding: '2px 6px',
                                 borderRadius: '4px',
-                                border: '1px solid rgba(16, 185, 129, 0.2)',
+                                border: '1px solid rgba(163, 163, 163, 0.2)',
                                 fontSize: '0.75rem',
                                 display: 'inline-block'
                               }}
@@ -3875,16 +3831,16 @@ Transcript:
                         alignItems: 'center',
                         gap: '0.25rem',
                         borderRadius: '6px',
-                        background: copyTimestampMenuTarget === 'overview' ? 'rgba(255, 94, 58, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                        border: `1px solid ${copyTimestampMenuTarget === 'overview' ? 'rgba(255, 94, 58, 0.5)' : 'var(--border-color)'}`,
+                        background: copyTimestampMenuTarget === 'overview' ? 'rgba(148, 148, 148, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${copyTimestampMenuTarget === 'overview' ? 'rgba(148, 148, 148, 0.5)' : 'var(--border-color)'}`,
                         color: copyTimestampMenuTarget === 'overview' ? 'var(--secondary)' : 'var(--text-secondary)',
                         cursor: 'pointer',
                         fontWeight: 600,
                         transition: 'var(--transition-smooth)'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 94, 58, 0.12)';
-                        e.currentTarget.style.borderColor = 'rgba(255, 94, 58, 0.4)';
+                        e.currentTarget.style.background = 'rgba(148, 148, 148, 0.12)';
+                        e.currentTarget.style.borderColor = 'rgba(148, 148, 148, 0.4)';
                         e.currentTarget.style.color = 'var(--secondary)';
                       }}
                       onMouseLeave={(e) => {
@@ -3917,7 +3873,7 @@ Transcript:
                           padding: '0.5rem',
                           borderRadius: '6px',
                           background: isSelected
-                            ? 'rgba(255, 94, 58, 0.1)'
+                            ? 'rgba(148, 148, 148, 0.1)'
                             : 'rgba(255, 255, 255, 0.02)',
                           border: isSelected
                             ? '1px solid var(--secondary)'
@@ -3960,14 +3916,14 @@ Transcript:
                             fontWeight: 700,
                             color: clip.virality_score >= 90 ? 'var(--secondary)' : 'var(--primary)',
                             background: clip.virality_score >= 90
-                              ? 'rgba(255, 94, 58, 0.12)'
-                              : 'rgba(168, 85, 247, 0.12)',
-                            border: `1px solid ${clip.virality_score >= 90 ? 'rgba(255,94,58,0.35)' : 'rgba(168,85,247,0.35)'}`,
+                              ? 'rgba(148, 148, 148, 0.12)'
+                              : 'rgba(128, 128, 128, 0.12)',
+                            border: `1px solid ${clip.virality_score >= 90 ? 'rgba(148, 148, 148, 0.35)' : 'rgba(128, 128, 128, 0.35)'}`,
                             borderRadius: '4px',
                             padding: '0.05rem 0.35rem',
                             whiteSpace: 'nowrap'
                           }}>
-                            🔥 {clip.virality_score}%
+                             {clip.virality_score}%
                           </span>
                           <span
                             onClick={(e) => handleCopyTimestamp(clip, e)}
@@ -3984,14 +3940,14 @@ Transcript:
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.color = 'var(--secondary)';
-                              e.currentTarget.style.background = 'rgba(255, 94, 58, 0.15)';
+                              e.currentTarget.style.background = 'rgba(148, 148, 148, 0.15)';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.color = 'var(--text-muted)';
                               e.currentTarget.style.background = 'transparent';
                             }}
                           >
-                            ⏱️ {formatSeconds(clip.start_time)} – {formatSeconds(clip.end_time)}
+                             {formatSeconds(clip.start_time)} – {formatSeconds(clip.end_time)}
                           </span>
                         </div>
                       </div>
@@ -4025,21 +3981,21 @@ Transcript:
                 flexWrap: 'wrap'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '1rem' }}>🤖</span>
+                  <span style={{ fontSize: '1rem' }}></span>
                   <span>{t.results.aiModelBadge}</span>
                   <strong style={{ color: 'var(--primary)', fontWeight: 600 }}>
                     {result.model || selectedModel}
                   </strong>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '1rem' }}>🎬</span>
+                  <span style={{ fontSize: '1rem' }}></span>
                   <span>{t.results.generatedClipsBadge}</span>
                   <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
                     {result.clips.length}
                   </strong>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '1rem' }}>🔖</span>
+                  <span style={{ fontSize: '1rem' }}></span>
                   <span>{t.results.markedClipsBadge}</span>
                   <strong style={{ color: 'var(--secondary)', fontWeight: 600 }}>
                     {result.clips.filter(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]).length}
@@ -4094,9 +4050,9 @@ Transcript:
                       onClick={() => toggleAllMarkedClips()}
                       title={result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? t.results.unmarkAllClips : t.results.markAllClips}
                       style={{
-                        background: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? 'rgba(239, 68, 68, 0.12)' : 'rgba(168, 85, 247, 0.12)',
-                        border: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(168, 85, 247, 0.35)',
-                        color: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '#f87171' : 'var(--primary)',
+                        background: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? 'rgba(132, 132, 132, 0.12)' : 'rgba(128, 128, 128, 0.12)',
+                        border: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '1px solid rgba(132, 132, 132, 0.35)' : '1px solid rgba(128, 128, 128, 0.35)',
+                        color: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '#9b9b9b' : 'var(--primary)',
                         borderRadius: '5px',
                         padding: '0.2rem 0.55rem',
                         fontSize: '0.74rem',
@@ -4225,9 +4181,9 @@ Transcript:
                                 transition: 'var(--transition-smooth)'
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(168, 85, 247, 0.15)';
+                                e.currentTarget.style.background = 'rgba(128, 128, 128, 0.15)';
                                 e.currentTarget.style.color = 'var(--primary)';
-                                e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.3)';
+                                e.currentTarget.style.borderColor = 'rgba(128, 128, 128, 0.3)';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
@@ -4236,7 +4192,7 @@ Transcript:
                               }}
                               title={t.results.copyTitleTooltip}
                             >
-                              📋 {t.results.copyMini}
+                               {t.results.copyMini}
                             </button>
                           </div>
                           <div className="score-meta" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -4245,11 +4201,11 @@ Transcript:
                               onClick={(e) => handleCopyTimestamp(clip, e)}
                               title={t.results.copyTimestampTooltip}
                             >
-                              ⏱️ {formatSeconds(clip.start_time)} - {formatSeconds(clip.end_time)}
+                               {formatSeconds(clip.start_time)} - {formatSeconds(clip.end_time)}
                             </span>
                             <span>{t.results.durationLabel(formatSeconds(clip.end_time - clip.start_time))}</span>
                             {clip.hook_time !== undefined && (
-                              <span 
+                              <span
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleSeek(clip.hook_time!);
@@ -4261,8 +4217,8 @@ Transcript:
                                   fontSize: '0.72rem',
                                   fontWeight: 'bold',
                                   color: 'var(--accent)',
-                                  background: 'rgba(16, 185, 129, 0.12)',
-                                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                                  background: 'rgba(163, 163, 163, 0.12)',
+                                  border: '1px solid rgba(163, 163, 163, 0.35)',
                                   borderRadius: '4px',
                                   padding: '0.05rem 0.35rem',
                                   cursor: 'pointer',
@@ -4277,7 +4233,7 @@ Transcript:
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
                           <div className={`score-badge ${clip.virality_score >= 90 ? 'score-high' : 'score-medium'}`}>
-                            <span>🔥</span>
+                            <span></span>
                             <span>{t.results.viralityBadge(clip.virality_score)}</span>
                           </div>
                           {!!markedClips[`${clip.start_time}_${clip.end_time}`] && (
@@ -4288,7 +4244,7 @@ Transcript:
                               fontSize: '0.65rem',
                               fontWeight: 'bold',
                               color: 'var(--secondary)',
-                              background: 'rgba(255, 94, 58, 0.12)',
+                              background: 'rgba(148, 148, 148, 0.12)',
                               padding: '0.15rem 0.4rem',
                               borderRadius: '4px',
                               border: '1px solid var(--secondary)'
@@ -4326,7 +4282,7 @@ Transcript:
                                 }}
                                 title={t.results.copyTitleTooltip}
                               >
-                                📋
+
                               </button>
                             </div>
                           )}
@@ -4359,7 +4315,7 @@ Transcript:
                                 }}
                                 title={t.results.copyCaptionTooltip}
                               >
-                                📋
+
                               </button>
                             </div>
                           )}
@@ -4367,7 +4323,7 @@ Transcript:
                       )}
 
                       {/* Row 1: Primary Actions (Preview Clip on Left, Download Clip on Right) */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.6rem', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.75rem', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.6rem', borderTop: '1px solid rgba(255, 255, 255, 0.03)', paddingTop: '0.75rem', gap: '0.5rem' }}>
                         <button
                           type="button"
                           className="glowing-btn"
@@ -4402,14 +4358,14 @@ Transcript:
                                 whiteSpace: 'nowrap',
                                 cursor: isDl ? 'not-allowed' : 'pointer',
                                 background: isReady
-                                  ? 'rgba(34, 197, 94, 0.15)'
-                                  : 'rgba(59, 130, 246, 0.12)',
+                                  ? 'rgba(172, 172, 172, 0.15)'
+                                  : 'rgba(133, 133, 133, 0.12)',
                                 border: isReady
-                                  ? '1px solid rgba(34, 197, 94, 0.4)'
-                                  : '1px solid rgba(59, 130, 246, 0.35)',
+                                  ? '1px solid rgba(172, 172, 172, 0.4)'
+                                  : '1px solid rgba(133, 133, 133, 0.35)',
                                 color: isReady
-                                  ? '#4ade80'
-                                  : '#60a5fa',
+                                  ? '#c4c4c4'
+                                  : '#a2a2a2',
                                 fontWeight: 600,
                                 transition: 'var(--transition-smooth)'
                               }}
@@ -4428,11 +4384,11 @@ Transcript:
                                 </>
                               ) : isReady ? (
                                 <>
-                                  <span>✅ {t.results.downloadedRawClip}</span>
+                                  <span> {t.results.downloadedRawClip}</span>
                                 </>
                               ) : (
                                 <>
-                                  <span>✂️ {t.results.downloadRawClip}</span>
+                                  <span> {t.results.downloadRawClip}</span>
                                 </>
                               )}
                             </button>
@@ -4565,7 +4521,7 @@ Transcript:
         <div className="custom-confirm-modal-overlay">
           <div className="custom-confirm-modal-card">
             <div className="confirm-modal-icon-wrap">
-              🧹
+
             </div>
             <h3 className="confirm-modal-title">{t.studio.confirmModalTitle}</h3>
             <p className="confirm-modal-desc" style={{ marginBottom: '1rem' }}>
@@ -4584,12 +4540,12 @@ Transcript:
               textAlign: 'left',
               fontSize: '0.78rem'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#4ade80' }}>
-                <span>✓</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#c4c4c4' }}>
+                <span></span>
                 <strong>{t.studio.confirmModalNotice}</strong>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#38bdf8' }}>
-                <span>🛡️</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b1b1b1' }}>
+                <span></span>
                 <strong>{t.header.confirmModalCookieNotice}</strong>
               </div>
             </div>
@@ -4614,6 +4570,12 @@ Transcript:
           </div>
         </div>
       )}
+      <footer className="dema-footer">
+        <span>{t.header.developerCredit}</span>
+        <a href="https://demadigitalasia.com" target="_blank" rel="noopener noreferrer">
+          Dema Digital Asia <span>demadigitalasia.com</span>
+        </a>
+      </footer>
     </div>
   );
 }

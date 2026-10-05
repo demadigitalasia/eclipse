@@ -173,7 +173,7 @@ def download_rendered_file(file_name: str, title: Optional[str] = None):
 @router.get("/api/download-batch-zip/{batch_id}")
 def download_batch_zip(batch_id: str):
     clean_id = os.path.basename(batch_id)
-    safe_name = f"cheat_clip_pro_{clean_id}.zip"
+    safe_name = f"eclipse_{clean_id}.zip"
     file_path = EXPORTS_DIR / safe_name
     if not file_path.exists():
         # Attempt to package any completed clips for this batch on the fly

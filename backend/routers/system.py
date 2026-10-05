@@ -26,10 +26,16 @@ def verify_admin_access(
 ) -> bool:
     """
     Verifies administrative authorization.
-    If ADMIN_API_KEY or CHEAT_CLIP_API_KEY is configured in .env, requires matching token.
+    If ADMIN_API_KEY or ECLIPSE_API_KEY is configured in .env, requires matching token.
+    CHEAT_CLIP_API_KEY remains supported as a legacy alias.
     If no secret key is set, allows open access for local desktop installation.
     """
-    admin_key = (os.environ.get("ADMIN_API_KEY") or os.environ.get("CHEAT_CLIP_API_KEY") or "").strip()
+    admin_key = (
+        os.environ.get("ADMIN_API_KEY")
+        or os.environ.get("ECLIPSE_API_KEY")
+        or os.environ.get("CHEAT_CLIP_API_KEY")
+        or ""
+    ).strip()
     if not admin_key:
         return True
 
@@ -137,7 +143,7 @@ async def api_perform_update(authorized: bool = Depends(verify_admin_access)):
 
     if has_local_changes:
         logger.info("Local changes detected. Stashing before update...")
-        run_git_command(["stash", "save", "Auto-stash before Cheat Clip PRO update"], cwd=root_dir)
+        run_git_command(["stash", "save", "Auto-stash before ECLIPSE update"], cwd=root_dir)
 
     # 3. Pull latest changes
     rc_pull, pull_out, err_pull = run_git_command(["pull", "origin", branch], cwd=root_dir, timeout=40)
@@ -188,7 +194,7 @@ async def api_perform_update(authorized: bool = Depends(verify_admin_access)):
         "previous_commit": info["current_commit"],
         "new_commit": new_info["current_commit"],
         "updated_deps": updated_deps,
-        "message": "Cheat Clip PRO has been updated successfully. Server is restarting in background..."
+        "message": "ECLIPSE has been updated successfully. Server is restarting in background..."
     }
 
 
@@ -199,5 +205,5 @@ async def api_restart_app(authorized: bool = Depends(verify_admin_access)):
     return {
         "success": True,
         "status": "restarting",
-        "message": "Cheat Clip PRO is restarting..."
+        "message": "ECLIPSE is restarting..."
     }

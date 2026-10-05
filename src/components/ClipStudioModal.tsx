@@ -34,7 +34,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
   const { t } = useLanguage();
   // Default to marked clips if any, otherwise all clips
   const initialClips = markedClips.length > 0 ? markedClips : allClips.slice(0, 3);
-  
+
   const [selectedClips, setSelectedClips] = useState<ViralClip[]>(initialClips);
   const [aspectRatio, setAspectRatio] = useState<AspectRatioOption>('9:16');
   const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>('black');
@@ -127,7 +127,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
         {/* Header */}
         <div className="studio-modal-header">
           <div className="studio-header-title">
-            <div className="studio-icon-badge">🎬</div>
+            <div className="studio-icon-badge"></div>
             <div>
               <div className="studio-title-row">
                 <h2>{t.studio.heading}</h2>
@@ -139,7 +139,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
             </div>
           </div>
           <button className="studio-close-btn" onClick={onClose} disabled={isRendering}>
-            ✕
+
           </button>
         </div>
 
@@ -250,10 +250,10 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                       </div>
                       <div className="pill-group framing-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                         {[
-                          { id: 'auto', label: t.studio.framingAuto || '🤖 AI Auto' },
-                          { id: 'center', label: t.studio.framingCenter || '🎯 Center (50%)' },
-                          { id: 'left', label: t.studio.framingLeft || '⬅️ Left Focus (35%)' },
-                          { id: 'right', label: t.studio.framingRight || '➡️ Right Focus (65%)' },
+                          { id: 'auto', label: t.studio.framingAuto || ' AI Auto' },
+                          { id: 'center', label: t.studio.framingCenter || ' Center (50%)' },
+                          { id: 'left', label: t.studio.framingLeft || ' Left Focus (35%)' },
+                          { id: 'right', label: t.studio.framingRight || ' Right Focus (65%)' },
                         ].map(opt => (
                           <button
                             key={opt.id}
@@ -307,7 +307,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                     <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                       {t.studio.facecamPositionLabel || 'Facecam Position in Source:'}
                     </span>
-                    <span style={{ fontSize: '0.72rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '0.1rem 0.45rem', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#b1b1b1', background: 'rgba(177, 177, 177, 0.12)', border: '1px solid rgba(177, 177, 177, 0.25)', padding: '0.1rem 0.45rem', borderRadius: '4px' }}>
                       {facecamPosition === 'auto' ? 'AI AUTO-DETECT' : facecamPosition.toUpperCase().replace('_', '-')}
                     </span>
                   </div>
@@ -339,7 +339,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
             <div className="studio-section">
               <label className="studio-label">
                 <span>{t.studio.titleBannerTitle}</span>
-                <span className="studio-tag" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
+                <span className="studio-tag" style={{ background: 'rgba(133, 133, 133, 0.2)', color: '#a2a2a2' }}>
                   {aspectRatio === '9:16' ? 'Position: 4:3 Upper Edge' : 'On Top of Content'}
                 </span>
               </label>
@@ -395,7 +395,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
             <div className="studio-section">
               <label className="studio-label">
                 <span>{t.studio.subtitlesTitle}</span>
-                <span className="studio-tag" style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80' }}>
+                <span className="studio-tag" style={{ background: 'rgba(172, 172, 172, 0.2)', color: '#c4c4c4' }}>
                   {t.studio.strictlyOneLine}
                 </span>
               </label>
@@ -587,9 +587,9 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                     type="button"
                     onClick={handleToggleAll}
                     style={{
-                      background: selectedClips.length === availableClips.length ? 'rgba(239, 68, 68, 0.12)' : 'rgba(168, 85, 247, 0.15)',
-                      border: selectedClips.length === availableClips.length ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(168, 85, 247, 0.4)',
-                      color: selectedClips.length === availableClips.length ? '#f87171' : 'var(--primary, #a855f7)',
+                      background: selectedClips.length === availableClips.length ? 'rgba(132, 132, 132, 0.12)' : 'rgba(128, 128, 128, 0.15)',
+                      border: selectedClips.length === availableClips.length ? '1px solid rgba(132, 132, 132, 0.35)' : '1px solid rgba(128, 128, 128, 0.4)',
+                      color: selectedClips.length === availableClips.length ? '#9b9b9b' : 'var(--primary, #808080)',
                       borderRadius: '5px',
                       padding: '0.18rem 0.5rem',
                       fontSize: '0.72rem',
@@ -622,7 +622,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                           {clip.title_suggestion || clip.title}
                         </span>
                         <span className="batch-clip-ts">
-                          ⏱️ {Math.floor(clip.start_time / 60)}:{(clip.start_time % 60).toFixed(0).padStart(2, '0')} -{' '}
+                           {Math.floor(clip.start_time / 60)}:{(clip.start_time % 60).toFixed(0).padStart(2, '0')} -{' '}
                           {Math.floor(clip.end_time / 60)}:{(clip.end_time % 60).toFixed(0).padStart(2, '0')} (
                           {(clip.end_time - clip.start_time).toFixed(0)}s)
                         </span>
@@ -688,12 +688,12 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                             </svg>
                             <span className="pip-skeleton-text">CAM</span>
                           </div>
-                          <div className="wireframe-pip-badge">🔴 CAM</div>
+                          <div className="wireframe-pip-badge"> CAM</div>
                         </div>
                       )}
                       {streamerPreset === 'split_top_cam' && (
                         <div className="wireframe-gameplay-badge">
-                          🎮 GAMEPLAY ({aspectRatio})
+                           GAMEPLAY ({aspectRatio})
                         </div>
                       )}
                     </div>

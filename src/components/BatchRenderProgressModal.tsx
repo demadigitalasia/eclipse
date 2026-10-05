@@ -39,7 +39,7 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
           </div>
           {isAllDone && (
             <button className="studio-close-btn" onClick={onClose}>
-              ✕
+
             </button>
           )}
         </div>
@@ -88,7 +88,7 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                         className="btn-download-clip"
                         title={t.batchProgress.downloadMp4Tooltip}
                       >
-                        ⬇️ MP4
+                         MP4
                       </a>
                     )}
                   </div>
@@ -104,10 +104,10 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                           type="button"
                           onClick={() => onRetryClip(idx)}
                           style={{
-                            background: 'rgba(245, 158, 11, 0.18)',
-                            border: '1px solid rgba(245, 158, 11, 0.5)',
+                            background: 'rgba(177, 177, 177, 0.18)',
+                            border: '1px solid rgba(177, 177, 177, 0.5)',
                             borderRadius: '4px',
-                            color: '#fbbf24',
+                            color: '#c8c8c8',
                             fontSize: '0.68rem',
                             fontWeight: 700,
                             padding: '2px 8px',
@@ -116,7 +116,7 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                           }}
                           title="Retry rendering this clip"
                         >
-                          {t.batchProgress.retryClip || '🔄 Retry'}
+                          {t.batchProgress.retryClip || ' Retry'}
                         </button>
                       )}
                     </div>
@@ -124,21 +124,21 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                       <span
                         style={{
                           fontSize: '0.68rem',
-                          color: '#fca5a5',
+                          color: '#bcbcbc',
                           maxWidth: '320px',
                           lineHeight: '1.3',
                           textAlign: 'right',
                           wordBreak: 'break-word',
-                          background: 'rgba(239, 68, 68, 0.12)',
+                          background: 'rgba(132, 132, 132, 0.12)',
                           padding: '3px 8px',
                           borderRadius: '4px',
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          border: '1px solid rgba(132, 132, 132, 0.3)',
                           cursor: 'pointer'
                         }}
                         title="Click to copy full error message"
                         onClick={() => navigator.clipboard.writeText(clip.error_message || clip.error || '')}
                       >
-                        ⚠️ {clip.error_message || clip.error}
+                         {clip.error_message || clip.error}
                       </span>
                     )}
                   </div>
@@ -157,22 +157,22 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                   type="button"
                   onClick={() => onRetryClip()}
                   style={{
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    border: '1px solid rgba(245, 158, 11, 0.7)',
+                    background: 'linear-gradient(135deg, #b1b1b1 0%, #909090 100%)',
+                    border: '1px solid rgba(177, 177, 177, 0.7)',
                     color: '#ffffff',
                     fontWeight: 700,
                     fontSize: '0.75rem',
                     padding: '0.4rem 0.85rem',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    boxShadow: '0 0 10px rgba(245, 158, 11, 0.35)',
+                    boxShadow: '0 0 10px rgba(177, 177, 177, 0.35)',
                     transition: 'all 0.2s ease',
                   }}
                   title="Retry all failed clips"
                 >
                   {t.batchProgress.retryAllFailed
                     ? t.batchProgress.retryAllFailed(progress.clips.filter(c => c.status === 'error').length)
-                    : `🔄 Retry Failed (${progress.clips.filter(c => c.status === 'error').length})`}
+                    : ` Retry Failed (${progress.clips.filter(c => c.status === 'error').length})`}
                 </button>
               )}
               {progress.zip_url && (

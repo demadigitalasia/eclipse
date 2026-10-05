@@ -144,18 +144,18 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
             <span style={{
               fontSize: '0.62rem',
               fontWeight: 500,
-              color: 'rgba(255,255,255,0.3)',
-              background: 'rgba(255,255,255,0.06)',
+              color: 'rgba(255, 255, 255, 0.3)',
+              background: 'rgba(255, 255, 255, 0.06)',
               padding: '0.1rem 0.4rem',
               borderRadius: '4px',
-              border: '1px solid rgba(255,255,255,0.1)'
+              border: '1px solid rgba(255, 255, 255, 0.1)'
             }}>{t.heatmap.notAvailable}</span>
           )}
         </span>
         <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
       </div>
       
-      <div style={{ position: 'relative', background: 'rgba(5, 7, 15, 0.6)', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '2px', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', background: 'rgba(7, 7, 7, 0.6)', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '2px', overflow: 'hidden' }}>
         <svg
           ref={svgRef}
           width="100%"
@@ -229,7 +229,7 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
                 y2={height}
                 stroke="var(--text-primary)"
                 strokeWidth="2"
-                style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.6))' }}
+                style={{ filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.6))' }}
               />
               <circle
                 cx={playheadX}
@@ -270,7 +270,7 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
               position: 'absolute',
               top: '4px',
               left: `${Math.min(svgWidth - 90, Math.max(10, hoverX - 45))}px`,
-              background: 'rgba(15, 23, 42, 0.95)',
+              background: 'rgba(23, 23, 23, 0.95)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '4px',
               padding: '2px 6px',
@@ -305,7 +305,7 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
             </span>
             {activeClip && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '2px', border: '1px dashed var(--secondary)', background: 'rgba(255, 94, 58, 0.1)' }}></span>
+                <span style={{ width: '8px', height: '8px', borderRadius: '2px', border: '1px dashed var(--secondary)', background: 'rgba(148, 148, 148, 0.1)' }}></span>
                 {t.heatmap.activeClipZone}
               </span>
             )}

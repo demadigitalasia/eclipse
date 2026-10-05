@@ -46,8 +46,8 @@ from backend.services.render_service import (
 
 # Initialize FastAPI Application
 app = FastAPI(
-    title="CHEAT CLIP PRO API",
-    description="High-performance backend API for Cheat Clip Pro auto-clipper and video studio",
+    title="ECLIPSE API",
+    description="Backend API for ECLIPSE video clipping studio, developed by Dema Digital Asia",
     version="2.0.0"
 )
 
@@ -93,7 +93,7 @@ app.include_router(cookies_router)
 app.include_router(downloads_router)
 app.include_router(system_router)
 
-logger.info("Cheat Clip PRO backend routers mounted successfully.")
+logger.info("ECLIPSE backend routers mounted successfully.")
 
 if __name__ == "__main__":
     import uvicorn

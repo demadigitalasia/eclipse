@@ -210,7 +210,7 @@ def get_current_git_info() -> dict:
         "commit_message": commit_msg,
         "commit_date": commit_date,
         "branch": branch if rc_branch == 0 and branch else "master",
-        "remote_url": remote_url if rc_remote == 0 and remote_url else "https://github.com/galihjuansaputra/cheat-clip-pro.git"
+        "remote_url": remote_url if rc_remote == 0 and remote_url else "https://github.com/demadigitalasia/eclipse.git"
     }
 
 

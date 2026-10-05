@@ -15,6 +15,7 @@ from backend.config import (
     EXPORTS_DIR,
     TEMP_DIR,
     UPLOADS_DIR,
+    get_ffmpeg_executable,
     download_clip_segment,
     download_full_raw_video,
     is_valid_mp4,
@@ -140,7 +141,7 @@ async def run_raw_clip_download_job(
             try:
                 logger.info(f"Trimming local video with {ACTIVE_ENCODER_NAME} for clip {download_title} ({start_time}-{end_time})")
                 trim_cmd = [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
                     "-ss", str(start_time),
                     "-i", source_video,
                     "-t", str(duration_sec),
@@ -159,7 +160,7 @@ async def run_raw_clip_download_job(
                 logger.warning(f"Hardware trimming failed ({trim_err}), retrying with CPU libx264...")
                 try:
                     cpu_trim_cmd = [
-                        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                        get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
                         "-ss", str(start_time),
                         "-i", source_video,
                         "-t", str(duration_sec),
@@ -196,7 +197,7 @@ async def run_raw_clip_download_job(
                         pass
                 # Fast timestamp and keyframe normalization to eliminate any playback stutter
                 fix_cmd = [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    get_ffmpeg_executable(), "-y", "-hide_banner", "-loglevel", "error",
                     "-i", downloaded_temp,
                     "-c", "copy",
                     "-avoid_negative_ts", "make_zero",

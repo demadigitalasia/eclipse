@@ -45,7 +45,7 @@ def normalize_to_netscape(raw_content: str) -> str:
                 lines = [
                     "# Netscape HTTP Cookie File",
                     "# http://curl.haxx.se/rfc/cookie_spec.html",
-                    "# Converted automatically from JSON format by CheatClip Pro",
+                    "# Converted automatically from JSON format by ECLIPSE",
                     "",
                 ]
                 count = 0

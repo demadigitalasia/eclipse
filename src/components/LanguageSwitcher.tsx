@@ -1,53 +1,4 @@
-import React from 'react';
 import { useLanguage } from '../locales';
-
-const IndonesiaFlag: React.FC = () => (
-  <svg
-    width="15"
-    height="10"
-    viewBox="0 0 16 11"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    style={{
-      borderRadius: '2px',
-      overflow: 'hidden',
-      flexShrink: 0,
-      boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.2)',
-    }}
-    aria-hidden="true"
-  >
-    <rect width="16" height="5.5" fill="#E11D48" />
-    <rect y="5.5" width="16" height="5.5" fill="#FFFFFF" />
-  </svg>
-);
-
-const UkFlag: React.FC = () => (
-  <svg
-    width="15"
-    height="10"
-    viewBox="0 0 60 30"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    style={{
-      borderRadius: '2px',
-      overflow: 'hidden',
-      flexShrink: 0,
-      boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.2)',
-    }}
-    aria-hidden="true"
-  >
-    <clipPath id="uk-flag-clip">
-      <rect width="60" height="30" />
-    </clipPath>
-    <g clipPath="url(#uk-flag-clip)">
-      <path d="M0 0h60v30H0z" fill="#012169" />
-      <path d="M0 0l60 30m0-30L0 30" stroke="#ffffff" strokeWidth="6" />
-      <path d="M0 0l60 30m0-30L0 30" stroke="#C8102E" strokeWidth="2.5" />
-      <path d="M30 0v30M0 15h60" stroke="#ffffff" strokeWidth="10" />
-      <path d="M30 0v30M0 15h60" stroke="#C8102E" strokeWidth="6" />
-    </g>
-  </svg>
-);
 
 export const LanguageSwitcher: React.FC = () => {
   const { language, setLanguage } = useLanguage();
@@ -58,10 +9,10 @@ export const LanguageSwitcher: React.FC = () => {
         display: 'inline-flex',
         alignItems: 'center',
         padding: '3px',
-        borderRadius: '20px',
-        background: 'rgba(255, 255, 255, 0.04)',
-        border: '1px solid var(--border-color)',
-        backdropFilter: 'blur(8px)',
+        borderRadius: '10px',
+        background: '#f3f3f3',
+        border: '1px solid #e5e5e5',
+        backdropFilter: 'none',
         position: 'relative',
         userSelect: 'none',
       }}
@@ -74,23 +25,22 @@ export const LanguageSwitcher: React.FC = () => {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: '0',
           padding: '4px 10px',
           fontSize: '0.75rem',
           fontWeight: 600,
           border: 'none',
-          borderRadius: '16px',
+          borderRadius: '7px',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
-          background: language === 'id' 
-            ? 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)' 
+          background: language === 'id'
+            ? 'var(--primary)'
             : 'transparent',
           color: language === 'id' ? '#ffffff' : 'var(--text-secondary)',
-          boxShadow: language === 'id' ? '0 2px 8px rgba(168, 85, 247, 0.35)' : 'none',
+          boxShadow: language === 'id' ? '0 2px 6px rgba(98, 98, 98, 0.18)' : 'none',
         }}
         title="Bahasa Indonesia"
       >
-        <IndonesiaFlag />
         <span>ID</span>
       </button>
 
@@ -100,23 +50,22 @@ export const LanguageSwitcher: React.FC = () => {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: '0',
           padding: '4px 10px',
           fontSize: '0.75rem',
           fontWeight: 600,
           border: 'none',
-          borderRadius: '16px',
+          borderRadius: '7px',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
-          background: language === 'en' 
-            ? 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)' 
+          background: language === 'en'
+            ? 'var(--primary)'
             : 'transparent',
           color: language === 'en' ? '#ffffff' : 'var(--text-secondary)',
-          boxShadow: language === 'en' ? '0 2px 8px rgba(168, 85, 247, 0.35)' : 'none',
+          boxShadow: language === 'en' ? '0 2px 6px rgba(98, 98, 98, 0.18)' : 'none',
         }}
         title="English"
       >
-        <UkFlag />
         <span>EN</span>
       </button>
     </div>

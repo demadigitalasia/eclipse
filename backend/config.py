@@ -51,7 +51,7 @@ ROOT_DIR = Path(_base_dir).parent
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("cheat-clip-pro")
+logger = logging.getLogger("eclipse")
 
 
 try:
@@ -62,6 +62,7 @@ try:
         COOKIES_PATH,
         ROOT_COOKIES_PATH,
         get_effective_cookies_path,
+        get_ffmpeg_executable,
         ACTIVE_ENCODER_NAME,
         ACTIVE_ENCODER_ARGS,
         detect_hardware_support,
@@ -87,6 +88,7 @@ except ImportError:
         COOKIES_PATH,
         ROOT_COOKIES_PATH,
         get_effective_cookies_path,
+        get_ffmpeg_executable,
         ACTIVE_ENCODER_NAME,
         ACTIVE_ENCODER_ARGS,
         detect_hardware_support,
