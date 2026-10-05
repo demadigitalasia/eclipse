@@ -294,7 +294,7 @@ export const CookiesModal: React.FC<CookiesModalProps> = ({
         {showDeleteConfirm && (
           <div className="custom-confirm-modal-overlay" style={{ zIndex: 10005 }}>
             <div className="custom-confirm-modal-card">
-              <div className="confirm-modal-icon-wrap" style={{ background: 'rgba(132, 132, 132, 0.15)', borderColor: 'rgba(132, 132, 132, 0.4)', color: '#848484' }}>
+              <div className="confirm-modal-icon-wrap cookie-confirm-mark">
 
               </div>
               <h3 className="confirm-modal-title">{t.cookies.clearCookiesConfirmTitle}</h3>

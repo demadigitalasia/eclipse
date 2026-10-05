@@ -1,0 +1,39 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    ECLIPSE_DATA_DIR=/var/lib/eclipse \
+    PORT=8000
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ffmpeg \
+        fonts-dejavu-core \
+        libass9 \
+        libgl1 \
+        libglib2.0-0 \
+        libsm6 \
+        libxext6 \
+        libxrender1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN python -m pip install --no-cache-dir -r /app/backend/requirements.txt
+
+COPY backend/ /app/backend/
+
+RUN useradd --create-home --uid 10001 eclipse \
+    && mkdir -p /var/lib/eclipse/temp_clips/uploads /var/lib/eclipse/exports /var/lib/eclipse/fonts \
+    && chown -R eclipse:eclipse /var/lib/eclipse
+
+USER eclipse
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '8000') + '/api/health', timeout=3)" || exit 1
+
+CMD ["sh", "-c", "if [ ! -f \"$ECLIPSE_DATA_DIR/fonts/Outfit.ttf\" ]; then cp -an /app/backend/fonts/. \"$ECLIPSE_DATA_DIR/fonts/\"; fi; exec uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -553,7 +553,8 @@ export default function App() {
       }
       setLoadingModels(true);
       try {
-        const res = await resilientFetch(`/api/models?api_key=${encodeURIComponent(cleanKey)}`, {
+        const res = await resilientFetch('/api/models', {
+          headers: { 'X-Gemini-API-Key': cleanKey },
           maxRetries: 3,
           retryDelay: 800,
           silent: true
@@ -2063,7 +2064,7 @@ Transcript:
       <header className="app-header">
         <div className="header-logo">
           <h1 className="eclipse-brand-heading">
-            <img className="eclipse-main-logo" src="/eclipse-logo.png" alt="ECLIPSE — Dema Digital Asia" />
+            <img className="eclipse-main-logo" src="/eclipse-logo-main.png" alt="ECLIPSE — Dema Digital Asia" />
           </h1>
         </div>
         <div className="header-nav" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -2127,13 +2128,8 @@ Transcript:
             <h2>{t.header.heroTitle}</h2>
             <p>{t.header.heroBody}</p>
           </div>
-          <div className="dema-waveform" aria-hidden="true">
-            <svg viewBox="0 0 340 92" fill="none" preserveAspectRatio="none">
-              <path d="M0 47h18l8-17 10 38 11-54 12 71 11-43 10 10h15l9-27 10 51 11-66 12 72 11-37 9 18h16l9-28 11 43 10-57 12 69 10-39 11 14h16l10-24 11 44 10-60 12 64 10-29 8 13h24" stroke="#626262" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M239 47h45" stroke="#949494" strokeWidth="3" strokeLinecap="round" />
-              <circle cx="284" cy="47" r="5" fill="#949494" />
-            </svg>
-            <span className="dema-waveform-tag">FRAME 01 <i /> FRAME 02</span>
+          <div className="dema-eclipse-art-wrap" aria-hidden="true">
+            <img className="dema-eclipse-art" src="/eclipse-hero-art.png" alt="" />
           </div>
         </div>
         <form onSubmit={handleAnalyze} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -4157,7 +4153,7 @@ Transcript:
                           />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <div className="clip-title-row">
                             <span className="clip-title" style={{ color: !!markedClips[`${clip.start_time}_${clip.end_time}`] ? 'var(--secondary)' : 'var(--text-primary)', opacity: 1 }}>
                               {clip.title}
                             </span>
@@ -4167,29 +4163,7 @@ Transcript:
                                 e.stopPropagation();
                                 handleCopyText(clip.title, 'Title');
                               }}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid var(--border-color)',
-                                cursor: 'pointer',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '0.7rem',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '2px',
-                                color: 'var(--text-secondary)',
-                                transition: 'var(--transition-smooth)'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(128, 128, 128, 0.15)';
-                                e.currentTarget.style.color = 'var(--primary)';
-                                e.currentTarget.style.borderColor = 'rgba(128, 128, 128, 0.3)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                e.currentTarget.style.color = 'var(--text-secondary)';
-                                e.currentTarget.style.borderColor = 'var(--border-color)';
-                              }}
+                              className="clip-copy-title"
                               title={t.results.copyTitleTooltip}
                             >
                                {t.results.copyMini}
@@ -4323,7 +4297,7 @@ Transcript:
                       )}
 
                       {/* Row 1: Primary Actions (Preview Clip on Left, Download Clip on Right) */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.6rem', borderTop: '1px solid rgba(255, 255, 255, 0.03)', paddingTop: '0.75rem', gap: '0.5rem' }}>
+                      <div className="clip-primary-actions">
                         <button
                           type="button"
                           className="glowing-btn"
@@ -4365,7 +4339,7 @@ Transcript:
                                   : '1px solid rgba(133, 133, 133, 0.35)',
                                 color: isReady
                                   ? '#c4c4c4'
-                                  : '#a2a2a2',
+                                  : '#555555',
                                 fontWeight: 600,
                                 transition: 'var(--transition-smooth)'
                               }}
@@ -4397,7 +4371,7 @@ Transcript:
                       </div>
 
                       {/* Row 2: Secondary Utilities (Copy Timestamp, Copy Details, Show Transcript) */}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.45rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                      <div className="clip-secondary-actions">
                         <button
                           type="button"
                           className="form-input"
@@ -4520,32 +4494,20 @@ Transcript:
       {showGlobalClearModal && (
         <div className="custom-confirm-modal-overlay">
           <div className="custom-confirm-modal-card">
-            <div className="confirm-modal-icon-wrap">
+            <div className="confirm-modal-icon-wrap cache-confirm-mark">
 
             </div>
             <h3 className="confirm-modal-title">{t.studio.confirmModalTitle}</h3>
             <p className="confirm-modal-desc" style={{ marginBottom: '1rem' }}>
               {t.studio.confirmModalDesc}
             </p>
-            <div style={{
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-              margin: '0 0 1.5rem 0',
-              padding: '0.85rem 1rem',
-              borderRadius: '10px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              textAlign: 'left',
-              fontSize: '0.78rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#c4c4c4' }}>
-                <span></span>
+            <div className="confirm-modal-notices">
+              <div className="confirm-modal-notice">
+                <span className="confirm-modal-notice-dot"></span>
                 <strong>{t.studio.confirmModalNotice}</strong>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b1b1b1' }}>
-                <span></span>
+              <div className="confirm-modal-notice">
+                <span className="confirm-modal-notice-dot"></span>
                 <strong>{t.header.confirmModalCookieNotice}</strong>
               </div>
             </div>

@@ -1343,7 +1343,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       {/* Fancy Glowing Section Header */}
       <div className="studio-section-header">
         <div className="studio-header-left">
-          <div className="studio-icon-glow"></div>
+          <img className="studio-section-mark" src="/favicon.png" alt="" aria-hidden="true" />
           <div>
             <div className="studio-title-badge-row">
               <h2 className="studio-main-heading">{t.studio.heading}</h2>
@@ -3461,9 +3461,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 style={{
                   fontSize: '0.72rem',
                   fontWeight: 700,
-                  color: isPlaying ? '#a3a3a3' : playerReady ? '#b1b1b1' : '#a2a2a2',
-                  background: isPlaying ? 'rgba(163, 163, 163, 0.15)' : playerReady ? 'rgba(177, 177, 177, 0.12)' : 'rgba(255, 255, 255, 0.08)',
-                  border: isPlaying ? '1px solid rgba(163, 163, 163, 0.35)' : playerReady ? '1px solid rgba(177, 177, 177, 0.3)' : '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#454545',
+                  background: '#f3f3f3',
+                  border: '1px solid #dedede',
                   padding: '0.15rem 0.5rem',
                   borderRadius: '6px',
                 }}
@@ -4391,32 +4391,20 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       {showClearConfirmModal && (
         <div className="custom-confirm-modal-overlay">
           <div className="custom-confirm-modal-card">
-            <div className="confirm-modal-icon-wrap">
+            <div className="confirm-modal-icon-wrap cache-confirm-mark">
 
             </div>
             <h3 className="confirm-modal-title">{t.studio.confirmModalTitle}</h3>
             <p className="confirm-modal-desc" style={{ marginBottom: '1rem' }}>
               {t.studio.confirmModalDesc}
             </p>
-            <div style={{
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-              margin: '0 0 1.5rem 0',
-              padding: '0.85rem 1rem',
-              borderRadius: '10px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              textAlign: 'left',
-              fontSize: '0.78rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#c4c4c4' }}>
-                <span></span>
+            <div className="confirm-modal-notices">
+              <div className="confirm-modal-notice">
+                <span className="confirm-modal-notice-dot"></span>
                 <strong>{t.studio.confirmModalNotice}</strong>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b1b1b1' }}>
-                <span></span>
+              <div className="confirm-modal-notice">
+                <span className="confirm-modal-notice-dot"></span>
                 <strong>{t.studio.confirmModalCookieNotice}</strong>
               </div>
             </div>

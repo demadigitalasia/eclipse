@@ -17,11 +17,19 @@ from PIL import Image, ImageDraw, ImageFont
 logger = logging.getLogger("eclipse.video-engine")
 
 BASE_DIR = Path(__file__).resolve().parent
-TEMP_DIR = BASE_DIR / "temp_clips"
-EXPORTS_DIR = BASE_DIR / "exports"
-FONTS_DIR = BASE_DIR / "fonts"
-COOKIES_PATH = BASE_DIR / "cookies.txt"
-ROOT_COOKIES_PATH = BASE_DIR.parent / "cookies.txt"
+_configured_data_dir = os.environ.get("ECLIPSE_DATA_DIR", "").strip()
+DATA_DIR = Path(_configured_data_dir).expanduser().resolve() if _configured_data_dir else BASE_DIR
+TEMP_DIR = DATA_DIR / "temp_clips"
+EXPORTS_DIR = DATA_DIR / "exports"
+FONTS_DIR = DATA_DIR / "fonts"
+COOKIES_PATH = DATA_DIR / "cookies.txt"
+_root_cookies_path = os.environ.get("ECLIPSE_ROOT_COOKIES_PATH", "").strip()
+ROOT_COOKIES_PATH = (
+    Path(_root_cookies_path).expanduser().resolve()
+    if _root_cookies_path
+    else DATA_DIR / "root-cookies.txt" if _configured_data_dir
+    else BASE_DIR.parent / "cookies.txt"
+)
 
 def get_effective_cookies_path() -> Optional[Path]:
     """Returns valid cookies file path from backend/cookies.txt or root cookies.txt."""

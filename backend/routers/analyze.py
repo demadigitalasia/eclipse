@@ -5,7 +5,7 @@ import os
 import re
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from google import genai
 from google.genai import types
@@ -91,9 +91,9 @@ def supadata_usage_endpoint(refresh: bool = False):
 
 
 @router.get("/api/models")
-def list_available_models(api_key: str = ""):
+def list_available_models(x_gemini_api_key: str = Header(default="", alias="X-Gemini-API-Key")):
     """Fetches list of available Gemini models using the user's API key, prioritizing Flash models (newest first)."""
-    models = list_available_gemini_models(api_key)
+    models = list_available_gemini_models(x_gemini_api_key)
     return {"models": models}
 
 
