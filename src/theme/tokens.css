@@ -1,0 +1,61 @@
+/* ECLIPSE V2 — satu-satunya sumber token desain. Tanpa !important. */
+:root {
+  --bg: #0a0b0f;
+  --surface: #13151c;
+  --surface-2: #1a1e29;
+  --surface-3: #222738;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --lime: #c6ff3e;
+  --lime-ink: #131a00;
+  --lime-dim: rgba(198, 255, 62, 0.14);
+  --violet: #7c5cff;
+  --violet-dim: rgba(124, 92, 255, 0.16);
+  --danger: #ff5c5c;
+  --danger-dim: rgba(255, 92, 92, 0.1);
+  --mint: #34d399;
+  --amber: #ffb020;
+  --text: #f2f4f8;
+  --muted: #9aa3b2;
+  --faint: #8b93a6;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { min-width: 0; }
+html { overflow-x: clip; }
+
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(at 12% -5%, rgba(198, 255, 62, 0.09) 0, transparent 45%),
+    radial-gradient(at 88% 0%, rgba(124, 92, 255, 0.14) 0, transparent 50%),
+    radial-gradient(at 50% 110%, rgba(56, 225, 255, 0.05) 0, transparent 55%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+#root { min-width: 0; }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+::selection { background: rgba(198, 255, 62, 0.3); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(198, 255, 62, 0.5); }

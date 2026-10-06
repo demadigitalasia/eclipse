@@ -1,155 +1,73 @@
 export interface HeatmapPoint {
-  start_time: number;
-  end_time: number;
-  value: number;
+  time: number
+  value: number
 }
 
 export interface TranscriptLine {
-  start: number;
-  end: number;
-  text: string;
-  engagement?: number;
+  start: number
+  end: number
+  text: string
 }
 
 export interface ViralClip {
-  title: string;
-  start_time: number;
-  end_time: number;
-  hook_time?: number;
-  virality_score: number;
-  key_quotes: string[];
-  transcript: string;
-  title_suggestion?: string;
-  caption_suggestion?: string;
-  hashtag_suggestion?: string;
+  title: string
+  start_time: number
+  end_time: number
+  hook_time: number
+  virality_score: number
+  transcript: string
+  caption?: string
 }
 
-export interface AnalyzeResponse {
-  video_id: string;
-  title: string;
-  duration: number;
-  heatmap: HeatmapPoint[];
-  summary: string;
-  clips: ViralClip[];
-  transcript?: TranscriptLine[];
-  model?: string;
-  video_url?: string;
-  source_type?: 'youtube' | 'upload' | 'gdrive';
+export interface AnalyzeResult {
+  video_id: string
+  title: string
+  duration: number
+  source: 'youtube' | 'drive' | 'upload'
+  video_url: string
+  heatmap: HeatmapPoint[]
+  transcript: TranscriptLine[]
+  clips: ViralClip[]
+  summary: string
+  model: string
+  analyzed_at: string
 }
 
-export type AspectRatioOption = '9:16' | '1:1' | '4:3' | '16:9' | '16:9_landscape';
-export type BackgroundStyle = 'black' | 'blurred';
-export type CaptionStyle = 
-  | 'viral_pop' 
-  | 'beast_punch' 
-  | 'cyber_violet' 
-  | 'fire_red' 
-  | 'electric_cyan' 
-  | 'golden_aura' 
-  | 'clean_minimal' 
-  | 'none';
-export type CaptionFont = 'Inter' | 'Montserrat';
-export type TitlePosition = 'auto' | 'safe_zone' | 'middle' | 'none';
-export type TitleDurationOption = 'entire' | '5s' | '10s';
-export type SubtitlePositionMode = 'bottom' | 'center';
-export type StreamerPreset = 'none' | 'split_top_cam' | 'pip_corner';
-export type FacecamPosition = 'auto' | 'bottom_right' | 'top_right' | 'bottom_left' | 'top_left' | 'center' | 'left' | 'right';
-export type FontSizeOption = 'small' | 'medium' | 'big' | 'custom';
-export type TextCaseOption = 'uppercase' | 'capitalize' | 'lowercase';
-export type HardwareAccelOption = 'auto' | 'nvenc' | 'amf' | 'qsv' | 'cpu';
-
-export interface HardwareAccelInfo {
-  status: string;
-  active_default: string;
-  recommended: string;
-  support: {
-    nvenc: boolean;
-    amf: boolean;
-    qsv: boolean;
-    cpu: boolean;
-    recommended: string;
-  };
-  options: Array<{
-    id: HardwareAccelOption;
-    label: string;
-    sub: string;
-    available: boolean;
-  }>;
+export interface HistoryEntry {
+  video_id: string
+  title: string
+  duration_pref: string
+  clip_count: number
+  analyzed_at: string
+  thumbnail: string
+  url: string
+  source: 'youtube' | 'drive' | 'upload'
 }
 
-export interface RenderSettings {
-  aspectRatio: AspectRatioOption;
-  backgroundStyle: BackgroundStyle;
-  enableFaceTracking: boolean;
-  streamerPreset: StreamerPreset;
-  facecamPosition?: FacecamPosition;
-  titleText?: string;
-  titlePrefix?: string;
-  titleSuffix?: string;
-  fileNamePrefix?: string;
-  fileNameSuffix?: string;
-  titlePosition: TitlePosition;
-  titleDuration?: TitleDurationOption;
-  titleFont?: CaptionFont;
-  titleFontSize?: FontSizeOption;
-  titleFontSizePx?: number;
-  titleTextCase?: TextCaseOption;
-  subtitlesEnabled?: boolean;
-  captionStyle: CaptionStyle;
-  captionFont: CaptionFont;
-  fontSize: FontSizeOption;
-  fontSizePx?: number;
-  textCase: TextCaseOption;
-  titleYPercent?: number;
-  subtitleYPercent?: number;
-  subtitlePositionMode?: SubtitlePositionMode;
-  subtitleCenterYPercent?: number;
-  selectedClips: ViralClip[];
-  // Background Music
-  bgmEnabled?: boolean;
-  bgmFilePath?: string;
-  bgmFileName?: string;
-  bgmVolume?: number; // 0 to 100%
-  bgmStartOffset?: number; // seconds from start of audio track
-  // Hook SFX
-  hookSfxEnabled?: boolean;
-  hookSfxFilePath?: string;
-  hookSfxFileName?: string;
-  hookSfxVolume?: number; // 0 to 150%
-  // Raw Audio / Voice Boost
-  originalAudioVolume?: number; // 0 to 200%
-  // Watermark
-  watermarkEnabled?: boolean;
-  watermarkType?: 'image' | 'text';
-  watermarkFilePath?: string;
-  watermarkUrl?: string;
-  watermarkText?: string;
-  watermarkSize?: number; // 5 to 50%
-  watermarkOpacity?: number; // 10 to 100%
-  watermarkX?: number; // 0 to 100%
-  watermarkY?: number; // 0 to 100%
-  // Hardware Acceleration / Video Encoder
-  hardwareAccel?: HardwareAccelOption;
+export type DurationPref = '15s' | '30s' | '60s' | 'auto'
+export type SourceMode = 'youtube' | 'drive' | 'upload'
+export type ViralityFilter = 'all' | 'high' | 'medium' | 'marked'
+export type SortBy = 'virality' | 'time' | 'duration'
+export type Lang = 'id' | 'en'
+
+export interface StudioSettings {
+  aspect: '9:16' | '1:1' | '4:3' | '16:9'
+  caption: 'viral_pop' | 'clean_minimal' | 'off'
+  title_text: string
 }
 
-export interface RenderClipStatus {
-  clip_index: number;
-  title: string;
-  base_title?: string;
-  status: 'pending' | 'downloading' | 'transcribing' | 'tracking' | 'rendering' | 'completed' | 'error';
-  progress_percent: number;
-  download_url?: string;
-  error_message?: string;
-  error?: string;
+export function formatTime(sec: number): string {
+  const s = Math.max(0, Math.floor(sec))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const r = s % 60
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m)
+  const ss = String(r).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }
 
-export interface BatchRenderProgress {
-  batch_id: string;
-  total_clips: number;
-  current_clip_index: number;
-  overall_status: 'running' | 'completed' | 'error';
-  zip_url?: string;
-  error_message?: string;
-  warning_message?: string;
-  clips: RenderClipStatus[];
+export function scoreTier(score: number): 'high' | 'mid' | 'low' {
+  if (score >= 90) return 'high'
+  if (score >= 70) return 'mid'
+  return 'low'
 }
