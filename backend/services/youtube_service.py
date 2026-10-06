@@ -19,6 +19,7 @@ from backend.config import get_effective_cookies_path, logger
 from backend.utils.proxy import (
     TimeoutSession,
     _shared_cookie_jar,
+    allow_direct_youtube_fallback,
     create_http_client,
     get_proxy_url,
     get_youtube_transcript_proxy_config,
@@ -123,32 +124,26 @@ def fetch_transcript_cli(
 
 
 def get_youtube_oembed_title(video_id_or_url: str) -> Optional[str]:
-    """Fetches video title directly from YouTube's public oEmbed API.
-    Fast (<300ms), requires no authentication or cookies, and works reliably when yt-dlp is blocked."""
+    """Fetches video title from YouTube's public oEmbed API.
+
+    Fast (<300ms) and works when yt-dlp is blocked. All requests go through the
+    single configured egress (proxy) when one is set, so the backend never mixes
+    egress IPs for YouTube traffic.
+    """
     video_id = extract_video_id(video_id_or_url) if ("youtube" in video_id_or_url or "youtu.be" in video_id_or_url or "/" in video_id_or_url) else video_id_or_url
     if not video_id:
         return None
-    
-    # 1. Try direct HTTP GET to oEmbed endpoint
-    try:
-        resp = requests.get(
-            f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
-            timeout=5
-        )
-        if resp.status_code == 200:
-            title = resp.json().get("title")
-            if title and title.strip():
-                return title.strip()
-    except Exception as e:
-        logger.warning(f"Direct oEmbed title fetch failed for {video_id}: {e}")
 
-    # 2. Try via proxy if configured
     proxy = get_proxy_url()
-    if proxy:
+    egress_attempts = [proxy] if proxy else [None]
+
+    # 1. oEmbed JSON through the configured egress
+    for attempt_proxy in egress_attempts:
+        proxies = {"http": attempt_proxy, "https": attempt_proxy} if attempt_proxy else None
         try:
             resp = requests.get(
                 f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
-                proxies={"http": proxy, "https": proxy},
+                proxies=proxies,
                 timeout=5
             )
             if resp.status_code == 200:
@@ -156,32 +151,35 @@ def get_youtube_oembed_title(video_id_or_url: str) -> Optional[str]:
                 if title and title.strip():
                     return title.strip()
         except Exception as e:
-            logger.warning(f"Proxy oEmbed title fetch failed for {video_id}: {e}")
+            logger.warning(f"oEmbed title fetch failed (proxy={'yes' if attempt_proxy else 'no'}) for {video_id}: {e}")
 
-    # 3. Direct HTML title scraping fallback
-    try:
-        resp = requests.get(f"https://www.youtube.com/watch?v={video_id}", timeout=5)
-        if resp.status_code == 200:
-            m = re.search(r'<meta\s+property="og:title"\s+content="([^"]+)"', resp.text)
-            if m and m.group(1).strip():
-                return m.group(1).strip()
-            m2 = re.search(r'<title>(.*?)(?:\s*-\s*YouTube)?</title>', resp.text)
-            if m2 and m2.group(1).strip():
-                return m2.group(1).strip()
-    except Exception:
-        pass
+    # 2. HTML title scraping through the same egress
+    for attempt_proxy in egress_attempts:
+        proxies = {"http": attempt_proxy, "https": attempt_proxy} if attempt_proxy else None
+        try:
+            resp = requests.get(f"https://www.youtube.com/watch?v={video_id}", proxies=proxies, timeout=5)
+            if resp.status_code == 200:
+                m = re.search(r'<meta\s+property="og:title"\s+content="([^"]+)"', resp.text)
+                if m and m.group(1).strip():
+                    return m.group(1).strip()
+                m2 = re.search(r'<title>(.*?)(?:\s*-\s*YouTube)?</title>', resp.text)
+                if m2 and m2.group(1).strip():
+                    return m2.group(1).strip()
+        except Exception:
+            pass
 
     return None
 
 
 def fetch_video_metadata(url: str, custom_proxy: Optional[str] = None):
     """Fetches video title, duration, and viewer retention heatmap using yt-dlp with oEmbed title fallback."""
-    is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
     proxy = custom_proxy or get_proxy_url()
     video_id = extract_video_id(url)
     target_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else url
-    
-    attempts = [proxy, None] if (is_vercel and proxy) else [None, proxy] if proxy else [None]
+
+    # Enforce a single stable egress: when a proxy is configured, never fall
+    # back to the (likely flagged) server IP for YouTube metadata.
+    attempts = [proxy] if proxy else [None]
     
     for attempt_proxy in attempts:
         ydl_opts = {
@@ -633,78 +631,86 @@ def fetch_transcript(
         attempt_history.append("Tier 2-4 (Proxy Fallbacks): No proxy configured in .env (WEBSHARE_PROXY, WEBSHARE_USERNAME, or PROXY_URL)")
 
     # ── Direct Tiers (Tier 5 - 7: Localhost / Residential IP fallback) ─────────
-    logger.info("[Tier 5-7] Attempting direct YouTube retrieval (no proxy)...")
+    # When a proxy is configured, direct access is skipped by default so all
+    # YouTube traffic leaves through the single trusted egress the cookies were
+    # exported from (set ECLIPSE_ALLOW_DIRECT_YOUTUBE_FALLBACK=1 to override).
+    run_direct_tiers = (not (proxy_cfg or proxy_url)) or allow_direct_youtube_fallback()
+    if run_direct_tiers:
+        logger.info("[Tier 5-7] Attempting direct YouTube retrieval (no proxy)...")
 
-    # ── Tier 5: Direct YouTubeTranscriptApi Python API ────────────────────────
-    notify("Tier 5/7: Direct YouTube API", "Trying Method 5/7: Direct YouTubeTranscriptApi (localhost / residential)...", 80)
-    try:
-        direct_client = create_http_client(timeout=10.0)
-        direct_api = YouTubeTranscriptApi(http_client=direct_client)
-
+        # ── Tier 5: Direct YouTubeTranscriptApi Python API ────────────────────
+        notify("Tier 5/7: Direct YouTube API", "Trying Method 5/7: Direct YouTubeTranscriptApi (localhost / residential)...", 80)
         try:
-            all_transcripts = list(direct_api.list(video_id))
-            generated = [t for t in all_transcripts if getattr(t, 'is_generated', False)]
-            manual = [t for t in all_transcripts if not getattr(t, 'is_generated', False)]
-            
-            # The video's true spoken language is the language of the YouTube ASR generated track
-            native_code = generated[0].language_code if generated else (manual[0].language_code if manual else None)
-            
-            # Priority: manual transcript in native language, then generated native transcript
-            target_tracks = []
-            if native_code:
-                for t in manual:
-                    if t.language_code == native_code or t.language_code.startswith(f"{native_code}-"):
+            direct_client = create_http_client(timeout=10.0)
+            direct_api = YouTubeTranscriptApi(http_client=direct_client)
+
+            try:
+                all_transcripts = list(direct_api.list(video_id))
+                generated = [t for t in all_transcripts if getattr(t, 'is_generated', False)]
+                manual = [t for t in all_transcripts if not getattr(t, 'is_generated', False)]
+
+                # The video's true spoken language is the language of the YouTube ASR generated track
+                native_code = generated[0].language_code if generated else (manual[0].language_code if manual else None)
+
+                # Priority: manual transcript in native language, then generated native transcript
+                target_tracks = []
+                if native_code:
+                    for t in manual:
+                        if t.language_code == native_code or t.language_code.startswith(f"{native_code}-"):
+                            target_tracks.append(t)
+                    for t in generated:
+                        if t.language_code == native_code or t.language_code.startswith(f"{native_code}-"):
+                            target_tracks.append(t)
+
+                # Fallback to any available original tracks (NO translation to other languages)
+                for t in (manual + generated):
+                    if t not in target_tracks:
                         target_tracks.append(t)
-                for t in generated:
-                    if t.language_code == native_code or t.language_code.startswith(f"{native_code}-"):
-                        target_tracks.append(t)
-            
-            # Fallback to any available original tracks (NO translation to other languages)
-            for t in (manual + generated):
-                if t not in target_tracks:
-                    target_tracks.append(t)
-            
-            for transcript in target_tracks:
-                try:
-                    data = transcript.fetch()
-                    res = normalize_transcript(data)
-                    if res:
-                        _shared_cookie_jar.update(direct_client.cookies)
-                        logger.info(f"[Tier 5] Transcript fetched via direct list ({transcript.language_code} - {transcript.language}): {len(res)} lines")
-                        return res
-                except Exception:
-                    continue
 
-            attempt_history.append(f"Tier 5 (Direct Python API): No accessible track in {len(all_transcripts)} tracks")
-        except Exception as list_err:
-            err_type = type(list_err).__name__
-            err_msg = str(list_err).strip().split('\n')[0]
-            attempt_history.append(f"Tier 5 (Direct Python API): {err_type} ({err_msg})")
-    except Exception as api_err:
-        attempt_history.append(f"Tier 5 (Direct Python API setup): {type(api_err).__name__} ({str(api_err)[:150]})")
+                for transcript in target_tracks:
+                    try:
+                        data = transcript.fetch()
+                        res = normalize_transcript(data)
+                        if res:
+                            _shared_cookie_jar.update(direct_client.cookies)
+                            logger.info(f"[Tier 5] Transcript fetched via direct list ({transcript.language_code} - {transcript.language}): {len(res)} lines")
+                            return res
+                    except Exception:
+                        continue
 
-    # ── Tier 6: Direct YouTubeTranscriptApi CLI Subprocess ────────────────────
-    notify("Tier 6/7: Direct CLI Subprocess", "Trying Method 6/7: Direct isolated CLI subprocess...", 88)
-    try:
-        direct_cli_data = fetch_transcript_cli(video_id, priority_langs=None, proxy_url=None, timeout=15)
-        if direct_cli_data:
-            logger.info(f"[Tier 6] Transcript fetched via direct CLI subprocess: {len(direct_cli_data)} lines")
-            return direct_cli_data
-    except Exception as cli_err:
-        attempt_history.append(f"Tier 6 (Direct CLI Subprocess): {type(cli_err).__name__} ({str(cli_err)[:150]})")
+                attempt_history.append(f"Tier 5 (Direct Python API): No accessible track in {len(all_transcripts)} tracks")
+            except Exception as list_err:
+                err_type = type(list_err).__name__
+                err_msg = str(list_err).strip().split('\n')[0]
+                attempt_history.append(f"Tier 5 (Direct Python API): {err_type} ({err_msg})")
+        except Exception as api_err:
+            attempt_history.append(f"Tier 5 (Direct Python API setup): {type(api_err).__name__} ({str(api_err)[:150]})")
 
-    # ── Tier 7: Direct yt-dlp Native Extraction ──────────────────────────────
-    notify("Tier 7/7: Direct yt-dlp Native", "Trying Method 7/7: Direct yt-dlp native caption extraction...", 94)
-    try:
-        direct_ytdlp_data = fetch_transcript_ytdlp(video_id, proxy=None)
-        if direct_ytdlp_data:
-            res = normalize_transcript(direct_ytdlp_data)
-            if res:
-                logger.info(f"[Tier 7] Transcript fetched via direct yt-dlp: {len(res)} lines")
-                return res
-        attempt_history.append("Tier 7 (Direct yt-dlp): No subtitle streams found")
-    except Exception as ytdlp_err:
-        attempt_history.append(f"Tier 7 (Direct yt-dlp): {type(ytdlp_err).__name__} ({str(ytdlp_err)[:150]})")
+        # ── Tier 6: Direct YouTubeTranscriptApi CLI Subprocess ────────────────
+        notify("Tier 6/7: Direct CLI Subprocess", "Trying Method 6/7: Direct isolated CLI subprocess...", 88)
+        try:
+            direct_cli_data = fetch_transcript_cli(video_id, priority_langs=None, proxy_url=None, timeout=15)
+            if direct_cli_data:
+                logger.info(f"[Tier 6] Transcript fetched via direct CLI subprocess: {len(direct_cli_data)} lines")
+                return direct_cli_data
+        except Exception as cli_err:
+            attempt_history.append(f"Tier 6 (Direct CLI Subprocess): {type(cli_err).__name__} ({str(cli_err)[:150]})")
+
+        # ── Tier 7: Direct yt-dlp Native Extraction ──────────────────────────
+        notify("Tier 7/7: Direct yt-dlp Native", "Trying Method 7/7: Direct yt-dlp native caption extraction...", 94)
+        try:
+            direct_ytdlp_data = fetch_transcript_ytdlp(video_id, proxy=None)
+            if direct_ytdlp_data:
+                res = normalize_transcript(direct_ytdlp_data)
+                if res:
+                    logger.info(f"[Tier 7] Transcript fetched via direct yt-dlp: {len(res)} lines")
+                    return res
+            attempt_history.append("Tier 7 (Direct yt-dlp): No subtitle streams found")
+        except Exception as ytdlp_err:
+            attempt_history.append(f"Tier 7 (Direct yt-dlp): {type(ytdlp_err).__name__} ({str(ytdlp_err)[:150]})")
+    else:
+        logger.info("[Tier 5-7] Skipped direct fallbacks to preserve the single configured egress.")
+        attempt_history.append("Tier 5-7 (Direct fallbacks): Skipped to preserve the single configured egress (set ECLIPSE_ALLOW_DIRECT_YOUTUBE_FALLBACK=1 to override)")
 
     # ── All Tiers Exhausted: Construct Comprehensive Diagnostic Error ─────────
     combined_history = " ".join(attempt_history)

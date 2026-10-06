@@ -64,6 +64,34 @@ def get_proxy_url() -> Optional[str]:
 
     return None
 
+def get_pot_provider_url() -> Optional[str]:
+    """PO token provider (bgutil HTTP) base URL: Settings panel, then environment.
+
+    When set, yt-dlp is told to fetch PO tokens from this provider so modern
+    player clients are not challenged by YouTube bot verification.
+    """
+    try:
+        from backend.utils.app_settings import get_settings_pot_provider_url
+
+        settings_url = get_settings_pot_provider_url()
+        if settings_url:
+            return settings_url
+    except Exception as exc:
+        logger.warning(f"Failed reading PO token provider URL from settings file: {exc}")
+
+    return (os.environ.get("YTDLP_POT_PROVIDER_URL") or "").strip() or None
+
+
+def allow_direct_youtube_fallback() -> bool:
+    """Whether direct (non-proxy) YouTube access is allowed as a last resort.
+
+    Disabled by default whenever a proxy is configured so all YouTube traffic
+    leaves through the single trusted egress the cookies were exported from.
+    Set ECLIPSE_ALLOW_DIRECT_YOUTUBE_FALLBACK=1 to re-enable mixed egress.
+    """
+    return os.environ.get("ECLIPSE_ALLOW_DIRECT_YOUTUBE_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def get_youtube_transcript_proxy_config(custom_proxy: Optional[str] = None):
     """
     Constructs a ProxyConfig (WebshareProxyConfig or GenericProxyConfig)

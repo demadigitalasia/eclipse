@@ -1,0 +1,47 @@
+# ECLIPSE backend + bgutil PO-token provider stack.
+#
+# Use this as a Coolify "Docker Compose" resource (or `docker compose -f
+# docker-compose.pot.yml up -d`) when YouTube bot verification still blocks
+# downloads on a datacenter IP.
+#
+# Set these in Coolify (or a local .env next to this file) — never commit them:
+#   ADMIN_API_KEY, GEMINI_API_KEY, SUPADATA_API_KEYS, ALLOWED_ORIGINS
+#   PROXY_URL (residential/mobile proxy, e.g. http://user:pass@host:port)
+#
+# The backend automatically points yt-dlp at the provider via
+# YTDLP_POT_PROVIDER_URL below. All YouTube traffic still goes through PROXY_URL.
+
+services:
+  eclipse-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    environment:
+      ECLIPSE_DATA_DIR: /var/lib/eclipse
+      PORT: "8000"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SUPADATA_API_KEYS: ${SUPADATA_API_KEYS:-}
+      PROXY_URL: ${PROXY_URL:-}
+      YTDLP_POT_PROVIDER_URL: http://bgutil-provider:4416
+    volumes:
+      - eclipse-data:/var/lib/eclipse
+    ports:
+      - "8000:8000"
+    depends_on:
+      - bgutil-provider
+
+  bgutil-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    restart: unless-stopped
+    init: true
+    # Only needed if PROXY_URL points at a proxy running on the Docker host.
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+    expose:
+      - "4416"
+
+volumes:
+  eclipse-data:

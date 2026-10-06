@@ -9,6 +9,7 @@ import subprocess
 import unicodedata
 import math
 import urllib.parse
+import urllib.request
 from functools import lru_cache
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple, Union
@@ -313,6 +314,157 @@ def _get_download_proxy_url() -> Optional[str]:
         return None
 
 
+def _proxy_for_logs() -> str:
+    """Returns the effective proxy (with credentials masked) for diagnostic logging."""
+    proxy_url = _get_download_proxy_url()
+    if not proxy_url:
+        return "none"
+    try:
+        try:
+            from backend.utils.proxy import mask_proxy_url
+        except ImportError:
+            from utils.proxy import mask_proxy_url
+
+        return mask_proxy_url(proxy_url)
+    except Exception:
+        return "<proxy_configured>"
+
+
+@lru_cache(maxsize=1)
+def get_yt_dlp_info() -> Dict[str, str]:
+    """Identifies the yt-dlp binary and exact version actually used for downloads."""
+    standalone = shutil.which("yt-dlp")
+    if standalone:
+        invocation = "yt-dlp"
+        prefix = ["yt-dlp"]
+    else:
+        try:
+            import yt_dlp  # noqa: F401
+        except ImportError:
+            return {"invocation": "", "binary": "", "version": "not-installed"}
+        invocation = f"{sys.executable} -m yt_dlp"
+        prefix = [sys.executable, "-m", "yt_dlp"]
+
+    version = "unknown"
+    try:
+        res = subprocess.run([*prefix, "--version"], capture_output=True, text=True, timeout=20)
+        if res.returncode == 0 and res.stdout.strip():
+            version = res.stdout.strip().splitlines()[0]
+    except Exception as exc:
+        logger.warning(f"Failed to determine yt-dlp version for diagnostics: {exc}")
+
+    return {
+        "invocation": invocation,
+        "binary": standalone or sys.executable,
+        "version": version,
+    }
+
+
+def get_pot_extractor_args() -> List[str]:
+    """Returns yt-dlp extractor args enabling a PO token provider when configured."""
+    args: List[str] = []
+    try:
+        try:
+            from backend.utils.proxy import get_pot_provider_url
+        except ImportError:
+            from utils.proxy import get_pot_provider_url
+
+        provider_url = get_pot_provider_url()
+    except Exception as exc:
+        logger.warning(f"Failed resolving PO token provider: {exc}")
+        provider_url = None
+
+    if provider_url:
+        args.extend(["--extractor-args", f"youtubepot-bgutilhttp:base_url={provider_url}"])
+
+    script_path = os.environ.get("YTDLP_POT_PROVIDER_SCRIPT", "").strip()
+    if script_path:
+        args.extend(["--extractor-args", f"youtubepot-bgutilscript:script_path={script_path}"])
+
+    po_token = os.environ.get("YTDLP_PO_TOKEN", "").strip()
+    if po_token:
+        args.extend(["--extractor-args", f"youtube:po_token={po_token}"])
+
+    return args
+
+
+def _recorded_cookies_egress_ip() -> Optional[str]:
+    """Returns the egress IP recorded when cookies were last saved, if any."""
+    try:
+        try:
+            from backend.utils.app_settings import get_settings_cookies_egress_ip
+        except ImportError:
+            from utils.app_settings import get_settings_cookies_egress_ip
+
+        return get_settings_cookies_egress_ip()
+    except Exception:
+        return None
+
+
+def log_download_diagnostics(context: str, url: str = "") -> None:
+    """Logs the real yt-dlp build, proxy egress, cookie source, and PO provider once per download."""
+    info = get_yt_dlp_info()
+    eff = get_effective_cookies_path()
+    if eff:
+        try:
+            cookie_label = f"present ({eff}, {eff.stat().st_size} bytes)"
+        except Exception:
+            cookie_label = f"present ({eff})"
+    else:
+        cookie_label = "none"
+
+    provider_url = None
+    try:
+        try:
+            from backend.utils.proxy import get_pot_provider_url
+        except ImportError:
+            from utils.proxy import get_pot_provider_url
+
+        provider_url = get_pot_provider_url()
+    except Exception:
+        provider_url = None
+
+    cookie_egress = _recorded_cookies_egress_ip()
+    download_proxy = _get_download_proxy_url()
+
+    # Only probe the egress IP when it is meaningful (proxy deployments or when
+    # cookies were bound to a specific IP); keep plain local installs fast.
+    egress_ip = None
+    if download_proxy or cookie_egress:
+        try:
+            try:
+                from backend.utils.egress import get_egress_ip
+            except ImportError:
+                from utils.egress import get_egress_ip
+
+            egress_ip = get_egress_ip(download_proxy, timeout=4.0)
+        except Exception:
+            egress_ip = None
+
+    mismatch = bool(cookie_egress and egress_ip and cookie_egress != egress_ip)
+
+    logger.info(
+        "Download diagnostics [%s] url=%s | yt-dlp=%s via %s | proxy=%s | cookies=%s | egress=%s (cookies saved from %s) | po_provider=%s",
+        context,
+        url or "-",
+        info.get("version", "unknown"),
+        info.get("invocation") or "not-installed",
+        _proxy_for_logs(),
+        cookie_label,
+        egress_ip or "unknown",
+        cookie_egress or "unknown",
+        provider_url or "none",
+    )
+    if mismatch:
+        logger.warning(
+            "Cookie/egress mismatch for %s: cookies were exported from %s but the backend is now egressing from %s. "
+            "Re-export cookies through the same egress (proxy) or YouTube may invalidate the session.",
+            url or context,
+            cookie_egress,
+            egress_ip,
+        )
+
+
 def get_yt_dlp_base_cmd(include_cookies: bool = True) -> List[str]:
     """
     Returns base command for yt-dlp with JavaScript runtime, player extractor args, and cookies.
@@ -343,6 +495,13 @@ def get_yt_dlp_base_cmd(include_cookies: bool = True) -> List[str]:
         "--extractor-args", "youtube:player_client=default,web_embedded,ios",
         "--force-ipv4"
     ])
+
+    # Attach a PO token provider (bgutil) when configured to satisfy YouTube's
+    # bot verification on modern player clients.
+    pot_args = get_pot_extractor_args()
+    if pot_args:
+        logger.info("PO token provider enabled for yt-dlp (%s).", " ".join(pot_args))
+        cmd.extend(pot_args)
 
     # Route downloads through the configured proxy (Settings panel or env) so
     # datacenter IPs flagged by YouTube bot verification can still fetch media.
@@ -713,6 +872,8 @@ def download_clip_segment(
     # If cookies are present, try with cookies first; if rejected by YouTube (or any reload/bot error), try guest mode.
     attempts = [True, False] if has_cookies else [False]
     last_err_snippet = "unknown"
+    attempt_errors: Dict[str, str] = {}
+    log_download_diagnostics("clip-section", clean_url)
 
     for use_cookies in attempts:
         mode_label = "with cookies" if use_cookies else "guest mode (without cookies)"
@@ -911,6 +1072,7 @@ def download_clip_segment(
                     pass
             last_err_snippet = str(e)
 
+        attempt_errors[mode_label] = last_err_snippet
         # If cookies were used and failed due to reload / session error or bot block, log and proceed to guest mode
         if use_cookies:
             logger.warning(f"Download with cookies failed ({last_err_snippet}). Automatically attempting guest mode fallback...")
@@ -922,14 +1084,41 @@ def download_clip_segment(
         except Exception:
             pass
 
-    err_lower = last_err_snippet.lower()
-    if "reloaded" in err_lower or "reload" in err_lower:
-        raise RuntimeError("YouTube rejected the session cookies ('The page needs to be reloaded'). Your cookies.txt may have expired or need refreshing. Please re-export fresh cookies from an active YouTube tab using the 🍪 Cookies Manager button in the top navbar.")
-    if "confirm you're not a bot" in err_lower or "sign in" in err_lower or "login" in err_lower:
-        raise RuntimeError("YouTube blocked video download (Bot verification). Please import/save fresh YouTube cookies using the 🍪 Cookies Manager button in the top navbar.")
-    if "timed out" in err_lower or "timeout" in err_lower:
-        raise RuntimeError("Video download timed out due to slow internet connection or lag. You can retry this clip anytime.")
-    raise RuntimeError(f"Failed to download video clip segment from YouTube ({last_err_snippet}). Check your internet connection or cookies.")
+    # Log every attempt (cookies + guest) with full detail so the original failure is never lost.
+    attempts_text = " || ".join(f"[{mode}] {err}" for mode, err in attempt_errors.items()) or last_err_snippet
+    info = get_yt_dlp_info()
+    logger.error(
+        "All download attempts failed for %s | yt-dlp=%s (%s) | proxy=%s | cookies=%s | attempts: %s",
+        clean_url,
+        info.get("version", "unknown"),
+        info.get("invocation") or "not-installed",
+        _proxy_for_logs(),
+        has_cookies,
+        attempts_text,
+    )
+
+    # The cookie attempt is authoritative: the guest retry only runs because the
+    # cookie attempt failed, so classify the error from the cookie attempt first.
+    primary_mode = "with cookies" if has_cookies else "guest mode (without cookies)"
+    primary_err = (attempt_errors.get(primary_mode) or last_err_snippet or "unknown").strip()
+    guest_err = (attempt_errors.get("guest mode (without cookies)") or "").strip()
+    combined_lower = f"{primary_err} {guest_err}".lower()
+
+    diag_suffix = (
+        f" [diagnostics: yt-dlp {info.get('version', 'unknown')}, "
+        f"proxy={'on' if _get_download_proxy_url() else 'off'}, cookies={'yes' if has_cookies else 'no'}]"
+    )
+    both_note = ""
+    if has_cookies and guest_err and guest_err != primary_err:
+        both_note = f" (cookie attempt: {primary_err[:160]} | guest retry: {guest_err[:160]})"
+
+    if "reloaded" in combined_lower or "reload" in combined_lower:
+        raise RuntimeError("YouTube rejected the session cookies ('The page needs to be reloaded'). Your cookies.txt may have expired or need refreshing. Please re-export fresh cookies from an active YouTube tab using the 🍪 Cookies Manager button in the top navbar." + both_note + diag_suffix)
+    if "confirm you're not a bot" in combined_lower or "sign in" in combined_lower or "login" in combined_lower:
+        raise RuntimeError("YouTube blocked video download (Bot verification). Please import/save fresh YouTube cookies using the 🍪 Cookies Manager button in the top navbar." + both_note + diag_suffix)
+    if "timed out" in combined_lower or "timeout" in combined_lower:
+        raise RuntimeError("Video download timed out due to slow internet connection or lag. You can retry this clip anytime." + both_note + diag_suffix)
+    raise RuntimeError(f"Failed to download video clip segment from YouTube ({primary_err}){both_note}{diag_suffix}. Check your internet connection or cookies.")
 
 
 def download_full_raw_video(video_url: str, output_path: str, progress_callback=None) -> str:
@@ -960,10 +1149,13 @@ def download_full_raw_video(video_url: str, output_path: str, progress_callback=
 
     has_cookies = get_effective_cookies_path() is not None
     attempts = [True, False] if has_cookies else [False]
+    attempt_errors: Dict[str, str] = {}
+    log_download_diagnostics("full-video", clean_url)
 
     for use_cookies in attempts:
         base_cmd = get_yt_dlp_base_cmd(include_cookies=use_cookies)
         mode_label = "with cookies" if use_cookies else "guest mode (without cookies)"
+        output_lines: List[str] = []
         cmd = [
             *base_cmd,
             "--no-colors",
@@ -982,6 +1174,9 @@ def download_full_raw_video(video_url: str, output_path: str, progress_callback=
             if not raw_line:
                 continue
             clean_line = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', raw_line).strip()
+            output_lines.append(clean_line)
+            if len(output_lines) > 200:
+                output_lines.pop(0)
 
             if clean_line.startswith("download:") and progress_callback:
                 raw_data = clean_line[len("download:"):].strip()
@@ -1024,10 +1219,35 @@ def download_full_raw_video(video_url: str, output_path: str, progress_callback=
             logger.info(f"Full raw video downloaded successfully ({mode_label}, {os.path.getsize(output_path)} bytes)")
             return str(output_path)
 
+        err_tail = "\n".join(output_lines[-25:]).strip() or f"exit code {returncode}"
+        attempt_errors[mode_label] = err_tail
         if use_cookies:
-            logger.warning(f"Full raw video download with cookies exited with code {returncode}. Retrying in guest mode...")
+            logger.warning(f"Full raw video download with cookies failed (exit {returncode}). Retrying in guest mode...\n{err_tail}")
 
-    raise RuntimeError("Failed to download raw video. Please check your cookies or network connection.")
+    # Log every attempt (cookies + guest) with full detail so the original failure is never lost.
+    attempts_text = " || ".join(f"[{mode}] {err}" for mode, err in attempt_errors.items()) or "no output captured"
+    info = get_yt_dlp_info()
+    logger.error(
+        "Full raw video download failed for %s | yt-dlp=%s (%s) | proxy=%s | cookies=%s | attempts: %s",
+        clean_url,
+        info.get("version", "unknown"),
+        info.get("invocation") or "not-installed",
+        _proxy_for_logs(),
+        has_cookies,
+        attempts_text,
+    )
+
+    combined_lower = " ".join(attempt_errors.values()).lower()
+    first_err = (attempt_errors.get("with cookies") or next(iter(attempt_errors.values()), "unknown")).strip()
+    diag_suffix = (
+        f" [diagnostics: yt-dlp {info.get('version', 'unknown')}, "
+        f"proxy={'on' if _get_download_proxy_url() else 'off'}, cookies={'yes' if has_cookies else 'no'}]"
+    )
+    if "reload" in combined_lower:
+        raise RuntimeError("YouTube rejected the session cookies ('The page needs to be reloaded'). Please re-export fresh cookies from an active YouTube tab using the 🍪 Cookies Manager button in the top navbar." + diag_suffix)
+    if "not a bot" in combined_lower or "sign in" in combined_lower:
+        raise RuntimeError("YouTube blocked video download (Bot verification). Please import/save fresh YouTube cookies using the 🍪 Cookies Manager button in the top navbar." + diag_suffix)
+    raise RuntimeError(f"Failed to download raw video ({first_err[:200]}){diag_suffix}. Please check your cookies or network connection.")
 
 
 def clean_caption_text(text: str) -> str:
@@ -3101,7 +3321,6 @@ def extract_clip_frame(video_url: str, video_id: str, timestamp: float = 0.0) ->
 
     # 4. Instant high-res thumbnail fallback (guarantees frame preview NEVER gets stuck)
     try:
-        import urllib.request
         for thumb_url in [
             f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg",
             f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",

@@ -25,6 +25,12 @@ interface SettingsStatus {
     configured: boolean;
     masked_url: string;
     source: 'settings' | 'env' | 'none';
+    egress_ip?: string | null;
+  };
+  pot_provider: {
+    configured: boolean;
+    url: string;
+    source: 'settings' | 'env' | 'none';
   };
 }
 
@@ -42,6 +48,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [status, setStatus] = useState<SettingsStatus | null>(null);
   const [supadataInput, setSupadataInput] = useState<string>('');
   const [proxyInput, setProxyInput] = useState<string>('');
+  const [potInput, setPotInput] = useState<string>('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -86,6 +93,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       setAdminKey(stored);
       setSupadataInput('');
       setProxyInput('');
+      setPotInput('');
       setTestResult(null);
       setMessage(null);
       if (stored) {
@@ -110,7 +118,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   };
 
-  const handleSave = async (overrides?: { supadata_api_keys?: string; proxy_url?: string }) => {
+  const handleSave = async (overrides?: { supadata_api_keys?: string; proxy_url?: string; pot_provider_url?: string }) => {
     persistAdminKey();
     const body: Record<string, string> = {};
     if (overrides) {
@@ -118,6 +126,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     } else {
       if (supadataInput.trim()) body.supadata_api_keys = supadataInput.trim();
       if (proxyInput.trim()) body.proxy_url = proxyInput.trim();
+      if (potInput.trim()) body.pot_provider_url = potInput.trim();
     }
 
     if (Object.keys(body).length === 0) {
@@ -138,6 +147,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         setStatus(data);
         setSupadataInput('');
         setProxyInput('');
+        setPotInput('');
         setMessage({ text: t.settings.savedMsg, type: 'success' });
       } else if (res.status === 401) {
         setMessage({ text: t.settings.adminInvalid, type: 'error' });
@@ -297,6 +307,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <p style={{ fontSize: '0.85rem' }}>
               <strong>{t.settings.proxyActiveLabel}</strong> {maskedProxy}
             </p>
+            <p style={{ fontSize: '0.85rem', opacity: 0.85 }}>
+              {status?.proxy.egress_ip
+                ? t.settings.egressCurrent(status.proxy.egress_ip)
+                : t.settings.egressUnavailable}
+            </p>
 
             <input
               type="text"
@@ -333,6 +348,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             )}
           </div>
 
+          {/* PO token provider */}
+          <div className="cookies-body-section">
+            <h3>{t.settings.potSectionTitle}</h3>
+            <p style={{ fontSize: '0.85rem', opacity: 0.8 }}>{t.settings.potDesc}</p>
+            <p style={{ fontSize: '0.85rem' }}>
+              <strong>{t.settings.potActiveLabel}</strong>{' '}
+              {status?.pot_provider.configured
+                ? status.pot_provider.url
+                : t.settings.potNotConfigured}
+            </p>
+
+            <input
+              type="text"
+              className="cookies-textarea"
+              style={{ minHeight: 'auto', padding: '0.6rem 0.75rem', fontFamily: 'monospace' }}
+              placeholder={t.settings.potPlaceholder}
+              value={potInput}
+              onChange={(e) => setPotInput(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              {status?.pot_provider.source === 'settings' && (
+                <button
+                  type="button"
+                  className="btn-danger-outline"
+                  onClick={() => handleSave({ pot_provider_url: '' })}
+                  disabled={isSaving}
+                >
+                  {t.settings.potClearBtn}
+                </button>
+              )}
+            </div>
+          </div>
+
           {isLoading && <p style={{ opacity: 0.7 }}>{t.settings.loadingBtn}</p>}
         </div>
 
@@ -344,7 +392,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           <button
             className="studio-btn-render glowing-btn"
             onClick={() => handleSave()}
-            disabled={isSaving || (!supadataInput.trim() && !proxyInput.trim())}
+            disabled={isSaving || (!supadataInput.trim() && !proxyInput.trim() && !potInput.trim())}
           >
             {isSaving ? t.settings.savingBtn : t.settings.saveBtn}
           </button>

@@ -18,7 +18,7 @@ except ImportError:  # Running from inside the backend/ directory directly
 
 SETTINGS_PATH = DATA_DIR / "settings.json"
 
-_ALLOWED_KEYS = ("supadata_api_keys", "proxy_url")
+_ALLOWED_KEYS = ("supadata_api_keys", "proxy_url", "pot_provider_url", "cookies_egress_ip")
 _SUPADATA_KEY_RE = re.compile(r"sd_[a-zA-Z0-9]+")
 
 
@@ -87,10 +87,24 @@ def get_settings_proxy_url() -> Optional[str]:
     return proxy or None
 
 
+def get_settings_pot_provider_url() -> Optional[str]:
+    """Base URL of the bgutil PO-token HTTP provider, if configured."""
+    provider = str(_read().get("pot_provider_url") or "").strip()
+    return provider or None
+
+
+def get_settings_cookies_egress_ip() -> Optional[str]:
+    """Public IP recorded when the stored cookies were last saved."""
+    ip = str(_read().get("cookies_egress_ip") or "").strip()
+    return ip or None
+
+
 def get_settings_snapshot() -> Dict[str, Any]:
     data = _read()
     return {
         "supadata_api_keys": parse_supadata_keys(data.get("supadata_api_keys")) if data.get("supadata_api_keys") else [],
         "proxy_url": str(data.get("proxy_url") or "").strip(),
+        "pot_provider_url": str(data.get("pot_provider_url") or "").strip(),
+        "cookies_egress_ip": str(data.get("cookies_egress_ip") or "").strip(),
         "path": str(SETTINGS_PATH),
     }

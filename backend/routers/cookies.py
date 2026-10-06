@@ -12,8 +12,31 @@ from backend.config import (
 )
 from backend.schemas.downloads import CookiesSaveRequest
 from backend.utils.admin_auth import verify_admin_if_configured
+from backend.utils.app_settings import (
+    get_settings_cookies_egress_ip,
+    update_settings,
+)
+from backend.utils.egress import get_proxy_egress_ip
+from backend.utils.proxy import get_proxy_url
 
 router = APIRouter(tags=["Cookies"])
+
+# Cookies are stored on the server, so only keep the domains YouTube actually
+# needs. This drops malformed entries and unrelated/private site cookies that
+# would otherwise be persisted (and warned about by yt-dlp).
+_ALLOWED_COOKIE_DOMAINS = (
+    "youtube.com",
+    "youtube-nocookie.com",
+    "googlevideo.com",
+    "google.com",
+    "gstatic.com",
+    "ytimg.com",
+)
+
+
+def _is_allowed_cookie_domain(domain: str) -> bool:
+    d = (domain or "").strip().lower().lstrip(".")
+    return any(d == allowed or d.endswith("." + allowed) for allowed in _ALLOWED_COOKIE_DOMAINS)
 
 
 def normalize_to_netscape(raw_content: str) -> str:
@@ -50,9 +73,11 @@ def normalize_to_netscape(raw_content: str) -> str:
                     "",
                 ]
                 count = 0
+                dropped = 0
                 for item in parsed:
                     domain = str(item.get("domain") or item.get("host") or "").strip()
-                    if not domain:
+                    if not domain or not _is_allowed_cookie_domain(domain):
+                        dropped += 1
                         continue
                     flag = "TRUE" if domain.startswith(".") else "FALSE"
                     path = str(item.get("path") or "/").strip()
@@ -72,30 +97,38 @@ def normalize_to_netscape(raw_content: str) -> str:
                         count += 1
 
                 if count > 0:
-                    logger.info(f"Successfully converted {count} JSON cookies into Netscape format.")
+                    logger.info(f"Converted {count} YouTube/Google JSON cookies into Netscape format (dropped {dropped} unrelated/malformed).")
                     return "\n".join(lines) + "\n"
         except Exception as json_err:
             logger.debug(f"JSON cookie parse check skipped: {json_err}")
 
-    # 3. Handle standard Netscape text: ensure standard Netscape header is present
-    lines = text.split("\n")
-    cleaned_lines = []
-    has_header = False
+    # 3. Handle standard Netscape text: keep only valid 7-field entries for
+    # YouTube/Google domains and always emit a clean Netscape header.
+    header_lines = [
+        "# Netscape HTTP Cookie File",
+        "# http://curl.haxx.se/rfc/cookie_spec.html",
+        "# Filtered to YouTube/Google domains by ECLIPSE",
+        "",
+    ]
+    kept_lines = []
+    dropped = 0
 
-    for line in lines:
+    for line in text.split("\n"):
         stripped = line.strip()
-        if not stripped:
+        if not stripped or stripped.startswith("#"):
             continue
-        if "# Netscape HTTP Cookie File" in stripped:
-            has_header = True
-        cleaned_lines.append(stripped)
+        parts = stripped.split("\t")
+        if len(parts) != 7 or not _is_allowed_cookie_domain(parts[0]):
+            dropped += 1
+            continue
+        kept_lines.append("\t".join(parts))
 
-    if not has_header:
-        cleaned_lines.insert(0, "# Netscape HTTP Cookie File")
-        cleaned_lines.insert(1, "# http://curl.haxx.se/rfc/cookie_spec.html")
-        cleaned_lines.insert(2, "")
+    if dropped:
+        logger.info(f"Cookie import: dropped {dropped} malformed/unrelated entries; kept {len(kept_lines)} YouTube/Google cookies.")
+    if not kept_lines:
+        return ""
 
-    return "\n".join(cleaned_lines) + "\n"
+    return "\n".join(header_lines + kept_lines) + "\n"
 
 
 @router.post("/api/cookies")
@@ -138,20 +171,52 @@ async def save_youtube_cookies(
         except Exception:
             pass
 
+        # Record the egress IP YouTube will see so we can warn later if the
+        # backend starts egressing from a different IP than the cookies were
+        # exported from (a common cause of session invalidation).
+        cookies_egress_ip = None
+        try:
+            cookies_egress_ip = get_proxy_egress_ip(force=True, timeout=6.0)
+            if cookies_egress_ip:
+                update_settings({"cookies_egress_ip": cookies_egress_ip})
+        except Exception as exc:
+            logger.warning(f"Could not record cookie egress IP: {exc}")
+
         return {
             "success": True,
             "status": "saved",
             "exists": True,
             "has_cookies": True,
             "size": len(normalized),
+            "cookies_egress_ip": cookies_egress_ip,
         }
     except Exception as e:
         logger.error(f"Failed to save cookies: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to write cookies file: {str(e)}")
 
 
+def _egress_status() -> dict:
+    """Current backend egress IP vs. the IP recorded when cookies were saved."""
+    current_ip = None
+    try:
+        current_ip = get_proxy_egress_ip()
+    except Exception as exc:
+        logger.warning(f"Egress IP lookup failed: {exc}")
+    saved_ip = get_settings_cookies_egress_ip()
+    match = None
+    if saved_ip and current_ip:
+        match = saved_ip == current_ip
+    return {
+        "egress_ip": current_ip,
+        "cookies_egress_ip": saved_ip,
+        "egress_match": match,
+        "proxy_configured": bool(get_proxy_url()),
+    }
+
+
 @router.get("/api/cookies")
 def get_youtube_cookies_status():
+    egress = _egress_status()
     eff = get_effective_cookies_path()
     if eff and eff.exists():
         sample_lines = []
@@ -174,9 +239,17 @@ def get_youtube_cookies_status():
             "has_cookies": True,
             "size": eff.stat().st_size,
             "sample_lines": sample_lines,
-            "cookies_content": ""  # Redacted to prevent credential exposure
+            "cookies_content": "",  # Redacted to prevent credential exposure
+            **egress,
         }
-    return {"exists": False, "has_cookies": False, "size": 0, "sample_lines": [], "cookies_content": ""}
+    return {
+        "exists": False,
+        "has_cookies": False,
+        "size": 0,
+        "sample_lines": [],
+        "cookies_content": "",
+        **egress,
+    }
 
 
 @router.delete("/api/cookies")
@@ -187,4 +260,8 @@ def delete_youtube_cookies(authorized: bool = Depends(verify_admin_if_configured
                 p.unlink()
             except Exception:
                 pass
+    try:
+        update_settings({"cookies_egress_ip": ""})
+    except Exception:
+        pass
     return {"success": True, "status": "deleted", "exists": False, "has_cookies": False}

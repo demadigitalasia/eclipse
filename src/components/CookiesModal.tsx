@@ -19,6 +19,9 @@ export const CookiesModal: React.FC<CookiesModalProps> = ({
   const [hasCookies, setHasCookies] = useState<boolean>(false);
   const [cookieSize, setCookieSize] = useState<number>(0);
   const [sampleLines, setSampleLines] = useState<string[]>([]);
+  const [egressIp, setEgressIp] = useState<string | null>(null);
+  const [cookiesEgressIp, setCookiesEgressIp] = useState<string | null>(null);
+  const [egressMatch, setEgressMatch] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
@@ -31,6 +34,9 @@ export const CookiesModal: React.FC<CookiesModalProps> = ({
         setHasCookies(data.exists);
         setCookieSize(data.size || 0);
         setSampleLines(data.sample_lines || []);
+        setEgressIp(data.egress_ip ?? null);
+        setCookiesEgressIp(data.cookies_egress_ip ?? null);
+        setEgressMatch(typeof data.egress_match === 'boolean' ? data.egress_match : null);
         if (data.cookies_content) {
           setCookieText(data.cookies_content);
         } else if (!data.exists) {
@@ -209,6 +215,22 @@ export const CookiesModal: React.FC<CookiesModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Cookie / egress binding */}
+          {hasCookies && (
+            <div className="cookies-status-section">
+              <div className={`cookie-status-box ${egressMatch === false ? 'warning' : 'active'}`}>
+                <span className="status-icon"></span>
+                <div className="status-info">
+                  <strong>{t.cookies.egressTitle}</strong>
+                  {egressIp ? <p>{t.cookies.egressCurrent(egressIp)}</p> : <p>{t.cookies.egressUnknown}</p>}
+                  {cookiesEgressIp && <p>{t.cookies.egressSaved(cookiesEgressIp)}</p>}
+                  {egressMatch === true && <p>{t.cookies.egressMatch}</p>}
+                  {egressMatch === false && <p>{t.cookies.egressMismatch}</p>}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Separate Storage Security Notice */}
           <div className="cookies-storage-notice">

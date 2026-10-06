@@ -13,6 +13,10 @@ yt-dlp>=2026.0.0
 youtube-transcript-api>=1.2.0
 requests>=2.31.0
 
+# Optional: PO token provider plugin for yt-dlp (set YTDLP_POT_PROVIDER_URL
+# or the Settings panel to point at a running bgutil HTTP provider).
+bgutil-ytdlp-pot-provider>=1.3.0
+
 # Whisper AI Transcription & Audio Processing
 torch>=2.0.0
 openai-whisper>=20231117

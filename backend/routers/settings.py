@@ -16,21 +16,25 @@ from pydantic import BaseModel
 from backend.config import logger
 from backend.utils.admin_auth import configured_admin_key, require_admin_configured
 from backend.utils.app_settings import (
+    get_settings_pot_provider_url,
     get_settings_proxy_url,
     get_settings_supadata_keys,
     parse_supadata_keys,
     update_settings,
 )
-from backend.utils.proxy import get_proxy_url, mask_proxy_url
+from backend.utils.egress import get_proxy_egress_ip
+from backend.utils.proxy import get_pot_provider_url, get_proxy_url, mask_proxy_url
 
 router = APIRouter(tags=["Settings"])
 
 _PROXY_SCHEME_RE = re.compile(r"^(https?|socks5h?)://", re.IGNORECASE)
+_HTTP_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 
 
 class SettingsUpdateRequest(BaseModel):
     supadata_api_keys: Optional[Union[str, List[str]]] = None
     proxy_url: Optional[str] = None
+    pot_provider_url: Optional[str] = None
 
 
 class ProxyTestRequest(BaseModel):
@@ -57,6 +61,14 @@ def _build_status() -> dict:
 
     proxy = get_proxy_url()
     settings_proxy = get_settings_proxy_url()
+    pot_provider = get_pot_provider_url()
+    settings_pot_provider = get_settings_pot_provider_url()
+
+    egress_ip = None
+    try:
+        egress_ip = get_proxy_egress_ip()
+    except Exception as exc:
+        logger.warning(f"Failed to resolve egress IP for settings panel: {exc}")
 
     return {
         "admin_configured": bool(configured_admin_key()),
@@ -71,6 +83,12 @@ def _build_status() -> dict:
             "configured": bool(proxy),
             "masked_url": mask_proxy_url(proxy),
             "source": "settings" if settings_proxy else ("env" if proxy else "none"),
+            "egress_ip": egress_ip,
+        },
+        "pot_provider": {
+            "configured": bool(pot_provider),
+            "url": pot_provider or "",
+            "source": "settings" if settings_pot_provider else ("env" if pot_provider else "none"),
         },
     }
 
@@ -108,6 +126,15 @@ def update_settings_panel(
                 detail="Proxy URL must start with http://, https://, socks5:// or socks5h://",
             )
         values["proxy_url"] = proxy
+
+    if "pot_provider_url" in payload.model_fields_set and payload.pot_provider_url is not None:
+        provider = payload.pot_provider_url.strip()
+        if provider and not _HTTP_URL_RE.match(provider):
+            raise HTTPException(
+                status_code=422,
+                detail="PO token provider URL must start with http:// or https://",
+            )
+        values["pot_provider_url"] = provider
 
     if values:
         try:
