@@ -48,16 +48,7 @@ export type CaptionStyle =
   | 'golden_aura' 
   | 'clean_minimal' 
   | 'none';
-export type CaptionFont = 
-  | 'Outfit' 
-  | 'Montserrat' 
-  | 'Inter' 
-  | 'Impact' 
-  | 'Bebas Neue' 
-  | 'Anton' 
-  | 'Poppins' 
-  | 'Arial Black'
-  | (string & {});
+export type CaptionFont = 'Inter' | 'Montserrat';
 export type TitlePosition = 'auto' | 'safe_zone' | 'middle' | 'none';
 export type TitleDurationOption = 'entire' | '5s' | '10s';
 export type SubtitlePositionMode = 'bottom' | 'center';
@@ -66,13 +57,6 @@ export type FacecamPosition = 'auto' | 'bottom_right' | 'top_right' | 'bottom_le
 export type FontSizeOption = 'small' | 'medium' | 'big' | 'custom';
 export type TextCaseOption = 'uppercase' | 'capitalize' | 'lowercase';
 export type HardwareAccelOption = 'auto' | 'nvenc' | 'amf' | 'qsv' | 'cpu';
-
-export interface FontItem {
-  name: string;
-  is_custom: boolean;
-  filename?: string | null;
-  url?: string | null;
-}
 
 export interface HardwareAccelInfo {
   status: string;

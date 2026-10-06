@@ -1,7 +1,7 @@
 import { useLanguage } from '../locales';
 
 export const LanguageSwitcher: React.FC = () => {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <div
@@ -17,7 +17,7 @@ export const LanguageSwitcher: React.FC = () => {
         userSelect: 'none',
       }}
       role="group"
-      aria-label="Language selection"
+      aria-label={t.accessibility.languageSelection}
     >
       <button
         type="button"
@@ -39,7 +39,7 @@ export const LanguageSwitcher: React.FC = () => {
           color: language === 'id' ? '#ffffff' : 'var(--text-secondary)',
           boxShadow: language === 'id' ? '0 2px 6px rgba(98, 98, 98, 0.18)' : 'none',
         }}
-        title="Bahasa Indonesia"
+        title={t.accessibility.indonesian}
       >
         <span>ID</span>
       </button>
@@ -64,7 +64,7 @@ export const LanguageSwitcher: React.FC = () => {
           color: language === 'en' ? '#ffffff' : 'var(--text-secondary)',
           boxShadow: language === 'en' ? '0 2px 6px rgba(98, 98, 98, 0.18)' : 'none',
         }}
-        title="English"
+        title={t.accessibility.english}
       >
         <span>EN</span>
       </button>

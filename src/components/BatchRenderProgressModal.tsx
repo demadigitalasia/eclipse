@@ -15,7 +15,7 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
   progress,
   onRetryClip,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   if (!isOpen || !progress) return null;
 
   const isAllDone = progress.overall_status === 'completed' || progress.overall_status === 'error';
@@ -25,20 +25,20 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
 
   return (
     <div className="modal-backdrop">
-      <div className="batch-progress-card" onClick={e => e.stopPropagation()}>
+      <div className="batch-progress-card" role="dialog" aria-modal="true" aria-labelledby="batch-progress-modal-title" onClick={e => e.stopPropagation()}>
         <div className="batch-progress-header">
           <div>
-            <h3>{t.batchProgress.modalTitle}</h3>
+            <h3 id="batch-progress-modal-title">{t.batchProgress.modalTitle}</h3>
             <p className="batch-subtitle">
               {progress.overall_status === 'error'
-                ? (progress.error_message || t.batchProgress.statusFailed)
+                ? (language === 'id' ? t.studio.allClipsFailed : (progress.error_message || t.batchProgress.statusFailed))
                 : isAllDone
                   ? t.batchProgress.allDoneSubtitle(progress.total_clips)
                   : t.batchProgress.processingSubtitle((progress.current_clip_index || 0) + 1, progress.total_clips)}
             </p>
           </div>
           {isAllDone && (
-            <button className="studio-close-btn" onClick={onClose}>
+            <button className="studio-close-btn" onClick={onClose} aria-label={t.batchProgress.closeStudio} title={t.batchProgress.closeStudio}>
 
             </button>
           )}
@@ -96,7 +96,7 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                 {clip.status === 'error' && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', marginTop: '2px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span className="status-badge error" title={clip.error_message || clip.error}>
+                      <span className="status-badge error" title={clip.error_message || clip.error || t.studio.clipRenderFailed}>
                         {t.batchProgress.statusFailed}
                       </span>
                       {onRetryClip && !isProcessing && (
@@ -114,9 +114,9 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
                           }}
-                          title="Retry rendering this clip"
+                          title={t.studio.retryClipBtn.trim()}
                         >
-                          {t.batchProgress.retryClip || ' Retry'}
+                          {t.batchProgress.retryClip}
                         </button>
                       )}
                     </div>
@@ -135,10 +135,10 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                           border: '1px solid rgba(132, 132, 132, 0.3)',
                           cursor: 'pointer'
                         }}
-                        title="Click to copy full error message"
+                        title={`${t.studio.copyFullErrorTooltip}: ${clip.error_message || clip.error || ''}`}
                         onClick={() => navigator.clipboard.writeText(clip.error_message || clip.error || '')}
                       >
-                         {clip.error_message || clip.error}
+                         {language === 'id' ? t.studio.clipRenderFailed : (clip.error_message || clip.error)}
                       </span>
                     )}
                   </div>
@@ -168,7 +168,7 @@ export const BatchRenderProgressModal: React.FC<BatchRenderProgressModalProps> =
                     boxShadow: '0 0 10px rgba(177, 177, 177, 0.35)',
                     transition: 'all 0.2s ease',
                   }}
-                  title="Retry all failed clips"
+                  title={t.batchProgress.retryAllFailedTooltip}
                 >
                   {t.batchProgress.retryAllFailed
                     ? t.batchProgress.retryAllFailed(progress.clips.filter(c => c.status === 'error').length)

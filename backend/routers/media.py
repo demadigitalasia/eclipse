@@ -480,59 +480,20 @@ async def upload_font(file: UploadFile = File(...)):
 @router.get("/api/fonts")
 def list_available_fonts():
     """
-    Returns the complete list of built-in and uploaded custom fonts.
+    Returns the two font families supported by the ECLIPSE type system.
     """
-    default_builtin = [
-        "Outfit",
-        "Montserrat",
-        "Inter",
-        "Impact",
-        "Bebas Neue",
-        "Anton",
-        "Poppins",
-        "Arial Black",
-    ]
-    fonts_map = {}
-    for name in default_builtin:
-        fonts_map[name.lower()] = {
-            "name": name,
-            "is_custom": False,
-            "filename": None,
-            "url": None
-        }
-
-    # Discover fonts on disk
-    if FONTS_DIR.exists():
-        for f in FONTS_DIR.iterdir():
-            if not f.is_file():
-                continue
-            ext = f.suffix.lower()
-            if ext not in [".ttf", ".otf", ".woff", ".woff2"]:
-                continue
-            # Skip emoji helper fonts
-            if f.name.lower() in ["seguiemj.ttf", "notocoloremoji.ttf"]:
-                continue
-
-            font_family = f.stem
-            try:
-                from PIL import ImageFont
-                loaded = ImageFont.truetype(str(f), 24)
-                names = loaded.getname()
-                if names and names[0]:
-                    font_family = str(names[0]).strip()
-            except Exception:
-                pass
-
-            key = font_family.lower()
-            is_builtin = key in fonts_map and not fonts_map[key]["is_custom"]
-            fonts_map[key] = {
-                "name": font_family,
-                "is_custom": not is_builtin,
-                "filename": f.name,
-                "url": f"/api/font-file/{f.name}"
+    return {
+        "success": True,
+        "fonts": [
+            {
+                "name": name,
+                "is_custom": False,
+                "filename": None,
+                "url": None,
             }
-
-    return {"success": True, "fonts": list(fonts_map.values())}
+            for name in ("Inter", "Montserrat")
+        ],
+    }
 
 
 @router.get("/api/font-file/{file_name}")

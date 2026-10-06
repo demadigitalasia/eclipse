@@ -21,7 +21,7 @@ interface AppUpdateModalProps {
 }
 
 export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [info, setInfo] = useState<VersionInfo | null>(null);
   const [isChecking, setIsChecking] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -62,13 +62,13 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
         const data = await res.json();
         setInfo(data);
         if (data.error) {
-          setErrorMessage(data.error);
+          setErrorMessage(language === 'id' ? t.updateModal.errorTitle : data.error);
         }
       } else {
         setErrorMessage(t.updateModal.errorTitle);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Network error while checking updates');
+      setErrorMessage(language === 'id' ? t.updateModal.networkCheckFailed : (err.message || t.updateModal.networkCheckFailed));
     } finally {
       setIsChecking(false);
     }
@@ -121,7 +121,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
             clearInterval(pollTimerRef.current);
             pollTimerRef.current = null;
           }
-          setErrorMessage('Restart took longer than expected. Please manually refresh your browser window.');
+          setErrorMessage(t.updateModal.restartTimeout);
           setIsRestarting(false);
         }
       }, 1500);
@@ -140,13 +140,13 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.detail || data.message || 'Update failed');
+        throw new Error(language === 'id' ? t.updateModal.updateFailed : (data.detail || data.message || t.updateModal.updateFailed));
       }
       setIsUpdating(false);
       startPollingReconnect();
     } catch (err: any) {
       setIsUpdating(false);
-      setErrorMessage(err.message || 'Error executing update');
+      setErrorMessage(language === 'id' ? t.updateModal.updateFailed : (err.message || t.updateModal.updateFailed));
     }
   };
 
@@ -187,6 +187,9 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
     >
       <div
         className="glass-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="app-update-modal-title"
         style={{
           width: '100%',
           maxWidth: '540px',
@@ -215,7 +218,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <span style={{ fontSize: '1.4rem' }}></span>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <h3 id="app-update-modal-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {t.updateModal.title}
               </h3>
               <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -241,6 +244,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
                 transition: 'all 0.15s ease',
               }}
               title={t.updateModal.closeBtn}
+              aria-label={t.updateModal.closeBtn}
             >
 
             </button>
@@ -359,7 +363,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                         borderRadius: '6px',
                         fontSize: '0.75rem',
-                        fontFamily: 'monospace',
+                        fontFamily: 'Inter',
                         color: 'var(--primary)',
                         fontWeight: 600,
                       }}
@@ -465,7 +469,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
                       >
                         {info.changelog.map((c, i) => (
                           <div key={i} style={{ fontSize: '0.78rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                            <span style={{ fontFamily: 'monospace', color: '#d1d1d1', fontWeight: 600, flexShrink: 0 }}>
+                            <span style={{ fontFamily: 'Inter', color: '#d1d1d1', fontWeight: 600, flexShrink: 0 }}>
                               {c.hash}
                             </span>
                             <span style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>
@@ -592,7 +596,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
                 gap: '0.4rem',
                 transition: 'all 0.15s ease',
               }}
-              title="Restart backend and frontend dev server"
+              title={t.updateModal.restartTooltip}
             >
               <span> {t.updateModal.restartBtn}</span>
             </button>

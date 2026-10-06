@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 class RenderSettingsModel(BaseModel):
     aspect_ratio: str = "9:16"
@@ -16,8 +16,8 @@ class RenderSettingsModel(BaseModel):
     title_duration: Optional[str] = "entire"
     subtitles_enabled: Optional[bool] = True
     caption_style: str = "viral_pop"
-    caption_font: str = "Outfit"
-    title_font: Optional[str] = "Outfit"
+    caption_font: str = "Inter"
+    title_font: Optional[str] = "Montserrat"
     font_size: str = "medium"
     title_font_size: Optional[str] = "medium"
     font_size_px: Optional[int] = None
@@ -49,6 +49,16 @@ class RenderSettingsModel(BaseModel):
     watermark_x: Optional[float] = 90.0
     watermark_y: Optional[float] = 8.0
     hardware_accel: Optional[str] = "auto"
+
+    @field_validator("caption_font", mode="before")
+    @classmethod
+    def use_supported_caption_font(cls, value: Any) -> str:
+        return value if isinstance(value, str) and value in {"Inter", "Montserrat"} else "Inter"
+
+    @field_validator("title_font", mode="before")
+    @classmethod
+    def use_supported_title_font(cls, value: Any) -> str:
+        return value if isinstance(value, str) and value in {"Inter", "Montserrat"} else "Montserrat"
 
 class RenderBatchRequest(BaseModel):
     video_url: str

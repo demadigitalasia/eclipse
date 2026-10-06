@@ -140,14 +140,14 @@ export const CookiesModal: React.FC<CookiesModalProps> = ({
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="cookies-modal-card" onClick={(e) => e.stopPropagation()}>
+      <div className="cookies-modal-card" role="dialog" aria-modal="true" aria-labelledby="cookies-modal-title" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="studio-modal-header">
           <div className="studio-header-title">
             <div className="studio-icon-badge"></div>
             <div>
               <div className="studio-title-row">
-                <h2>{t.cookies.modalTitle}</h2>
+                <h2 id="cookies-modal-title">{t.cookies.modalTitle}</h2>
                 <span className={`status-pill ${hasCookies ? 'active' : 'inactive'}`}>
                   {hasCookies ? t.cookies.statusActive : t.cookies.statusInactive}
                 </span>
@@ -157,7 +157,7 @@ export const CookiesModal: React.FC<CookiesModalProps> = ({
               </p>
             </div>
           </div>
-          <button className="studio-close-btn" onClick={onClose}>
+          <button className="studio-close-btn" onClick={onClose} aria-label={t.cookies.closeBtn} title={t.cookies.closeBtn}>
 
           </button>
         </div>

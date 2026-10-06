@@ -18,13 +18,14 @@ import type {
   BatchRenderProgress,
   HardwareAccelOption,
   HardwareAccelInfo,
-  FontItem,
+  TranscriptLine,
 } from '../types';
 
 interface ClipStudioSectionProps {
   videoUrl: string;
   videoId: string;
   allClips: ViralClip[];
+  transcript?: TranscriptLine[];
   markedClips: ViralClip[];
   activeClip: ViralClip | null;
   onStartRender: (settings: RenderSettings) => void;
@@ -34,6 +35,8 @@ interface ClipStudioSectionProps {
   batchProgress?: BatchRenderProgress | null;
   onDismissProgress?: () => void;
   onRetryClip?: (clipIndex?: number) => void;
+  isWorkspaceOpen: boolean;
+  onExitWorkspace: () => void;
 }
 
 function getFriendlyErrorMessage(rawMsg: string): string {
@@ -120,9 +123,9 @@ const ClipRenderErrorBox: React.FC<{ errorMessage: string; t: any; onRetry?: () 
                 transition: 'all 0.2s ease',
                 boxShadow: '0 0 8px rgba(177, 177, 177, 0.35)',
               }}
-              title="Retry rendering this clip"
+              title={t.studio.retryClipTooltip}
             >
-              {t.studio.retryClipBtn || ' Retry'}
+              {t.studio.retryClipBtn}
             </button>
           )}
           <button
@@ -139,16 +142,16 @@ const ClipRenderErrorBox: React.FC<{ errorMessage: string; t: any; onRetry?: () 
               fontWeight: 600,
               transition: 'all 0.2s ease',
             }}
-            title="Copy full error details"
+            title={t.studio.copyErrorTooltip}
           >
-            {copied ? (t.studio.copiedErrorBtn || ' Copied!') : (t.studio.copyErrorBtn || ' Copy')}
+            {copied ? (t.studio.copiedErrorBtn) : (t.studio.copyErrorBtn)}
           </button>
         </div>
       </div>
 
       <details style={{ fontSize: '0.67rem', color: '#a2a2a2', marginTop: '0.15rem' }}>
         <summary style={{ cursor: 'pointer', color: '#d4d4d4', userSelect: 'none', fontWeight: 500 }}>
-          {t.studio.errorDetails || 'Technical Log Details'}
+          {t.studio.errorDetails}
         </summary>
         <pre
           style={{
@@ -159,7 +162,7 @@ const ClipRenderErrorBox: React.FC<{ errorMessage: string; t: any; onRetry?: () 
             borderRadius: '4px',
             color: '#9b9b9b',
             fontSize: '0.65rem',
-            fontFamily: 'Consolas, Monaco, monospace',
+            fontFamily: 'Inter',
             whiteSpace: 'pre-wrap',
             maxHeight: '130px',
             overflowY: 'auto',
@@ -176,6 +179,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   videoUrl,
   videoId,
   allClips,
+  transcript = [],
   markedClips,
   activeClip,
   onStartRender,
@@ -185,8 +189,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   batchProgress,
   onDismissProgress,
   onRetryClip,
+  isWorkspaceOpen,
+  onExitWorkspace,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [activeStudioTab, setActiveStudioTab] = useState<'clips' | 'frame' | 'text' | 'audio' | 'export'>('clips');
   // Directly reflect marked clips (supports selecting 0 clips)
   const [selectedClips, setSelectedClips] = useState<ViralClip[]>(markedClips);
   const [previewClipIndex, setPreviewClipIndex] = useState<number>(0);
@@ -202,8 +209,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [titlePosition, setTitlePosition] = useState<TitlePosition>('auto');
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('viral_pop');
   const [lastActiveCaptionStyle, setLastActiveCaptionStyle] = useState<CaptionStyle>('viral_pop');
-  const [captionFont, setCaptionFont] = useState<CaptionFont>('Outfit');
-  const [titleFont, setTitleFont] = useState<CaptionFont>('Outfit');
+  const [captionFont, setCaptionFont] = useState<CaptionFont>('Inter');
+  const [titleFont, setTitleFont] = useState<CaptionFont>('Montserrat');
   const [fontSize, setFontSize] = useState<FontSizeOption>('medium');
   const [fontSizePx, setFontSizePx] = useState<number>(75);
   const [titleFontSize, setTitleFontSize] = useState<FontSizeOption>('medium');
@@ -211,22 +218,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const [textCase, setTextCase] = useState<TextCaseOption>('uppercase');
   const [titleTextCase, setTitleTextCase] = useState<TextCaseOption>('uppercase');
 
-  // Custom Font Library State
-  const [availableFonts, setAvailableFonts] = useState<FontItem[]>([
-    { name: 'Outfit', is_custom: false },
-    { name: 'Montserrat', is_custom: false },
-    { name: 'Inter', is_custom: false },
-    { name: 'Impact', is_custom: false },
-    { name: 'Bebas Neue', is_custom: false },
-    { name: 'Anton', is_custom: false },
-    { name: 'Poppins', is_custom: false },
-    { name: 'Arial Black', is_custom: false },
-  ]);
-  const [isUploadingFont, setIsUploadingFont] = useState<boolean>(false);
-  const [isTitleFontDragging, setIsTitleFontDragging] = useState<boolean>(false);
-  const [isSubFontDragging, setIsSubFontDragging] = useState<boolean>(false);
-  const titleFontInputRef = useRef<HTMLInputElement | null>(null);
-  const subtitleFontInputRef = useRef<HTMLInputElement | null>(null);
+  const fontOptions: CaptionFont[] = ['Inter', 'Montserrat'];
   const [fileNamePrefix, setFileNamePrefix] = useState<string>('');
   const [fileNameSuffix, setFileNameSuffix] = useState<string>('');
 
@@ -302,69 +294,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     fetchHardwareSupport();
   }, []);
 
-  const loadCustomFontFace = (name: string, url: string) => {
-    try {
-      const font = new FontFace(name, `url(${url})`);
-      font.load().then(loaded => {
-        document.fonts.add(loaded);
-      }).catch(err => console.warn(`Font '${name}' load error:`, err));
-    } catch (e) {
-      console.warn('FontFace API error:', e);
-    }
-  };
-
-  useEffect(() => {
-    const fetchAvailableFonts = async () => {
-      try {
-        const res = await resilientFetch('/api/fonts', { maxRetries: 3, retryDelay: 1000, silent: true });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.fonts)) {
-            setAvailableFonts(data.fonts);
-            data.fonts.forEach((f: FontItem) => {
-              if (f.url) loadCustomFontFace(f.name, f.url);
-            });
-          }
-        }
-      } catch {
-        // Fallback to built-in fonts
-      }
-    };
-    fetchAvailableFonts();
-  }, []);
-
-  const handleUploadFont = async (file: File, target: 'title' | 'subtitle') => {
-    if (!file) return;
-    setIsUploadingFont(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const res = await resilientFetch('/api/upload-font', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success && data.font_name) {
-        if (data.url) loadCustomFontFace(data.font_name, data.url);
-        setAvailableFonts(prev => {
-          if (!prev.some(f => f.name.toLowerCase() === data.font_name.toLowerCase())) {
-            return [...prev, { name: data.font_name, is_custom: true, filename: data.filename, url: data.url }];
-          }
-          return prev;
-        });
-        if (target === 'title') {
-          setTitleFont(data.font_name);
-        } else {
-          setCaptionFont(data.font_name);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to upload custom font:', err);
-    } finally {
-      setIsUploadingFont(false);
-    }
-  };
-
   // Playable video player state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -391,22 +320,124 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setSelectedClips(markedClips);
   }, [markedClips]);
 
-  // Sync active clip from external selection into preview
+  // Prefer a clip selected for rendering; fall back to the active result clip when none are marked.
   useEffect(() => {
-    if (activeClip) {
-      const idx = allClips.findIndex(
-        c => c.start_time === activeClip.start_time && c.end_time === activeClip.end_time
-      );
-      if (idx !== -1) {
-        setPreviewClipIndex(idx);
-      }
-    }
-  }, [activeClip, allClips]);
+    const preferredClip = markedClips[0] || activeClip;
+    if (!preferredClip) return;
+    const idx = allClips.findIndex(
+      c => c.start_time === preferredClip.start_time && c.end_time === preferredClip.end_time
+    );
+    if (idx !== -1) setPreviewClipIndex(idx);
+  }, [activeClip, markedClips, allClips]);
 
   const currentPreviewClip = allClips[previewClipIndex] || allClips[0] || null;
   const clipStart = currentPreviewClip ? currentPreviewClip.start_time : 0;
   const clipEnd = currentPreviewClip ? currentPreviewClip.end_time : 60;
   const clipDuration = Math.max(1, clipEnd - clipStart);
+
+  // Mirror the renderer's transcript-to-word timing so the live preview shows
+  // the same analyzed dialogue and active-word animation as the exported video.
+  const previewCaption = useMemo(() => {
+    if (!currentPreviewClip || !transcript.length || captionStyle === 'none') return null;
+
+    const words: Array<{ text: string; start: number; end: number }> = [];
+    for (const line of transcript) {
+      const rawText = line.text || '';
+      const cleaned = rawText
+        .replace(/\[.*?\]|\(.*?\)|\*.*?\*/g, ' ')
+        .replace(/\b(laughter|applause|music|cheering|snickering|giggle|cough)\b/gi, ' ')
+        .replace(/[^\p{L}\p{N}\s.,%&$?]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!cleaned) continue;
+
+      const lineStart = Number(line.start) || 0;
+      const lineEnd = Number(line.end) > lineStart
+        ? Number(line.end)
+        : lineStart + Math.max(1.8, cleaned.split(/\s+/).length * 0.38);
+      if (lineEnd <= clipStart || lineStart >= clipEnd) continue;
+
+      const lineWords = cleaned.split(/\s+/);
+      const lineDuration = Math.max(0.2, lineEnd - lineStart);
+      const totalChars = Math.max(1, lineWords.reduce((sum, word) => sum + Math.max(1, word.length), 0));
+      let cursor = lineStart;
+      for (const word of lineWords) {
+        const wordDuration = Math.max(0.15, (Math.max(1, word.length) / totalChars) * lineDuration);
+        const wordStart = cursor;
+        const wordEnd = cursor + wordDuration;
+        cursor = wordEnd;
+        if (wordEnd <= clipStart || wordStart >= clipEnd) continue;
+        words.push({
+          text: word,
+          start: Math.max(0, wordStart - clipStart),
+          end: Math.max(Math.max(0, wordStart - clipStart) + 0.12, Math.min(clipDuration, wordEnd - clipStart)),
+        });
+      }
+    }
+
+    words.sort((a, b) => a.start - b.start);
+    const chunks: typeof words[] = [];
+    let chunk: typeof words = [];
+    let chunkChars = 0;
+    for (const word of words) {
+      const length = word.text.length;
+      if (chunk.length >= 3 || (chunk.length > 0 && chunkChars + length > 16)) {
+        chunks.push(chunk);
+        chunk = [word];
+        chunkChars = length;
+      } else {
+        chunk.push(word);
+        chunkChars += length + 1;
+      }
+    }
+    if (chunk.length) chunks.push(chunk);
+
+    const chunkBounds: Array<[number, number]> = [];
+    for (const items of chunks) {
+      const start = Math.max(items[0].start, chunkBounds[chunkBounds.length - 1]?.[1] || 0);
+      chunkBounds.push([start, Math.max(start + 0.25, items[items.length - 1].end)]);
+    }
+    for (let index = 0; index < chunkBounds.length - 1; index += 1) {
+      if (chunkBounds[index][1] > chunkBounds[index + 1][0]) {
+        chunkBounds[index][1] = chunkBounds[index + 1][0];
+      }
+    }
+    for (const bounds of chunkBounds) {
+      if (bounds[1] <= bounds[0]) bounds[1] = bounds[0] + 0.2;
+    }
+
+    const relativeTime = currentTime - clipStart;
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
+      const items = chunks[chunkIndex];
+      const [start, end] = chunkBounds[chunkIndex];
+      if (relativeTime < start || relativeTime >= end) continue;
+
+      const points = [start];
+      for (let wordIndex = 1; wordIndex < items.length; wordIndex += 1) {
+        const minimum = points[points.length - 1] + 0.08;
+        const maximum = end - 0.08 * (items.length - wordIndex);
+        const point = minimum > maximum
+          ? points[points.length - 1] + (end - points[points.length - 1]) / (items.length - wordIndex + 1)
+          : Math.max(minimum, Math.min(maximum, items[wordIndex].start));
+        points.push(point);
+      }
+      points.push(end);
+      const activeIndex = items.findIndex((_, index) => relativeTime >= points[index] && relativeTime < points[index + 1]);
+      if (activeIndex !== -1) return { words: items.map(item => item.text), activeIndex };
+    }
+    return null;
+  }, [transcript, currentPreviewClip, clipStart, clipEnd, clipDuration, currentTime, captionStyle]);
+
+  const captionHighlightColor: Record<CaptionStyle, string> = {
+    viral_pop: '#ffe600',
+    beast_punch: '#00ff66',
+    cyber_violet: '#d946ef',
+    fire_red: '#ff2e2e',
+    electric_cyan: '#00f0ff',
+    golden_aura: '#ffb800',
+    clean_minimal: '#e0e0e0',
+    none: '#ffffff',
+  };
 
   // Fetch face/object detection coordinates
   useEffect(() => {
@@ -745,14 +776,14 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       const resp = await fetch('/api/clear-temp', { method: 'POST' });
       if (resp.ok) {
         const data = await resp.json();
-        setTempClearMsg(` ${data.message || 'Temp folder cleared!'}`);
+        setTempClearMsg(` ${language === 'id' ? t.studio.tempCleared : (data.message || t.studio.tempCleared)}`);
         setTimeout(() => setTempClearMsg(''), 4500);
       } else {
-        setTempClearMsg('Failed to clear temp cache');
+        setTempClearMsg(t.studio.tempClearFailed);
       }
     } catch (e) {
       console.error('Error clearing temp cache:', e);
-      setTempClearMsg('Error clearing temp cache');
+      setTempClearMsg(t.studio.tempClearFailed);
     } finally {
       setIsClearingTemp(false);
       setShowClearConfirmModal(false);
@@ -781,7 +812,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       setBgmEnabled(true);
     } catch (err) {
       console.error('BGM upload error:', err);
-      alert('Failed to upload background music file. Please try an MP3, WAV, or M4A file.');
+      alert(t.studio.uploadMusicFailed);
     } finally {
       setIsUploadingBgm(false);
     }
@@ -862,7 +893,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       setHookSfxEnabled(true);
     } catch (err) {
       console.error('SFX upload error:', err);
-      alert('Failed to upload sound effect file. Please try an MP3, WAV, or M4A file.');
+      alert(t.studio.uploadSfxFailed);
     } finally {
       setIsUploadingHookSfx(false);
     }
@@ -929,7 +960,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
       setWatermarkEnabled(true);
     } catch (err) {
       console.error('Watermark upload error:', err);
-      alert('Failed to upload watermark image.');
+      alert(t.studio.uploadWatermarkFailed);
     } finally {
       setIsUploadingWatermark(false);
     }
@@ -1218,7 +1249,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   const baseClipHookTitle = (
     currentCustomTitle !== undefined && currentCustomTitle.trim() !== ''
       ? currentCustomTitle
-      : (currentPreviewClip?.title_suggestion || currentPreviewClip?.title || 'YOUR VIRAL HOOK TITLE')
+      : (currentPreviewClip?.title_suggestion || currentPreviewClip?.title || t.studio.previewSampleTitle)
   );
 
   const activeTitle = `${titlePrefix}${baseClipHookTitle}${titleSuffix}`;
@@ -1339,7 +1370,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
   };
 
   return (
-    <section id="clip-studio-section" className="clip-studio-page-section glass-panel">
+    <section
+      id="clip-studio-section"
+      className={`clip-studio-page-section glass-panel${isWorkspaceOpen ? ' studio-workspace-active' : ''}`}
+      hidden={!isWorkspaceOpen}
+      aria-label={t.studio.heading}
+    >
       {/* Fancy Glowing Section Header */}
       <div className="studio-section-header">
         <div className="studio-header-left">
@@ -1347,7 +1383,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           <div>
             <div className="studio-title-badge-row">
               <h2 className="studio-main-heading">{t.studio.heading}</h2>
-              <span className="pro-badge glowing-badge">PRO</span>
             </div>
             <p className="studio-subtext">
               {t.studio.subtext}
@@ -1361,6 +1396,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             <span className="preview-picker-label">{t.studio.previewClip}</span>
             <select
               className="preview-clip-select"
+              aria-label={t.studio.previewClip}
               value={previewClipIndex}
               onChange={e => setPreviewClipIndex(Number(e.target.value))}
             >
@@ -1377,14 +1413,42 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             </select>
           </div>
         )}
+
+        <button type="button" className="studio-exit-workspace-btn" onClick={onExitWorkspace}>
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+            <path d="M13 8H3m0 0 4-4m-4 4 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {t.studio.backToResults}
+        </button>
       </div>
 
-      {/* Main Studio Grid: Controls (Left) + Real Image Live Preview (Right) */}
+      <nav className="studio-workspace-tabs" aria-label={t.studio.heading}>
+        {([
+          ['clips', t.studio.tabClips, selectedClips.length],
+          ['frame', t.studio.tabFrame],
+          ['text', t.studio.tabText],
+          ['audio', t.studio.tabAudio],
+          ['export', t.studio.tabExport],
+        ] as const).map(([tab, label, count]) => (
+          <button
+            key={tab}
+            type="button"
+            className={`studio-workspace-tab${activeStudioTab === tab ? ' active' : ''}`}
+            aria-pressed={activeStudioTab === tab}
+            onClick={() => setActiveStudioTab(tab)}
+          >
+            {label}
+            {tab === 'clips' && <span className="studio-tab-count">{count}/{allClips.length}</span>}
+          </button>
+        ))}
+      </nav>
+
+      {/* Dedicated editor workspace: preview stays visible while settings change by category. */}
       <div className="studio-workspace-grid">
         {/* Left Column: Interactive Controls */}
         <div className="studio-controls-pane">
           {/* 1. Canvas & Inner Aspect Ratio */}
-          <div className="studio-card-group">
+          <div className="studio-card-group studio-canvas-settings-card" hidden={activeStudioTab !== 'frame'}>
             <div className="group-header">
               <span className="group-title">{t.studio.canvasTitle}</span>
               <span className="group-badge">{t.studio.canvasBadge}</span>
@@ -1437,8 +1501,8 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 onClick={() => handleSelectAspectRatio('16:9_landscape')}
               >
                 <div className="aspect-icon-box ratio-169landscape"></div>
-                <span className="aspect-name">{t.studio.ratio169Landscape || '16:9 Landscape'}</span>
-                <span className="aspect-sub">{t.studio.ratio169LandscapeSub || 'True 1920×1080'}</span>
+                <span className="aspect-name">{t.studio.ratio169Landscape}</span>
+                <span className="aspect-sub">{t.studio.ratio169LandscapeSub}</span>
               </button>
             </div>
 
@@ -1466,7 +1530,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             )}
 
             {/* AI Active Speaker & Object Centering */}
-            <div style={{ marginTop: '0.85rem' }}>
+            <div className="studio-face-tracking-setting">
               <div className="studio-checkbox-row">
                 <input
                   type="checkbox"
@@ -1482,7 +1546,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               {enableFaceTracking && streamerPreset === 'none' && (
                 <div className="horizontal-framing-selector" style={{ marginTop: '0.65rem', paddingLeft: '1.6rem' }}>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                    <span>{t.studio.horizontalFramingLabel || 'Horizontal Framing / Focal Point:'}</span>
+                    <span>{t.studio.horizontalFramingLabel}</span>
                     {faceBox?.found && facecamPosition === 'auto' && (
                       <span style={{
                         fontSize: '0.7rem',
@@ -1499,10 +1563,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   </div>
                   <div className="pill-group framing-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                     {[
-                      { id: 'auto', label: t.studio.framingAuto || ' AI Auto' },
-                      { id: 'center', label: t.studio.framingCenter || ' Center (50%)' },
-                      { id: 'left', label: t.studio.framingLeft || ' Left Focus (35%)' },
-                      { id: 'right', label: t.studio.framingRight || ' Right Focus (65%)' },
+                      { id: 'auto', label: t.studio.framingAuto },
+                      { id: 'center', label: t.studio.framingCenter },
+                      { id: 'left', label: t.studio.framingLeft },
+                      { id: 'right', label: t.studio.framingRight },
                     ].map(opt => (
                       <button
                         key={opt.id}
@@ -1521,7 +1585,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 3. Streamer Facecam Presets */}
-          <div className="studio-card-group">
+          <div className="studio-card-group studio-streamer-layout-card" hidden={activeStudioTab !== 'frame'}>
             <div className="group-header">
               <span className="group-title">{t.studio.streamerTitle}</span>
             </div>
@@ -1571,7 +1635,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               <div className="streamer-facecam-position-wrap" style={{ marginTop: '0.85rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    {t.studio.facecamPositionLabel || 'Facecam Position in Source:'}
+                    {t.studio.facecamPositionLabel}
                   </span>
                   <span style={{ fontSize: '0.72rem', color: '#b1b1b1', background: 'rgba(177, 177, 177, 0.12)', border: '1px solid rgba(177, 177, 177, 0.25)', padding: '0.1rem 0.45rem', borderRadius: '4px' }}>
                     {facecamPosition === 'auto' ? 'AI AUTO-DETECT' : facecamPosition.toUpperCase().replace('_', '-')}
@@ -1579,12 +1643,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
                 <div className="toggle-pill-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                   {[
-                    { id: 'auto', label: t.studio.facecamAuto || 'Auto (AI Detect)' },
-                    { id: 'bottom_right', label: t.studio.facecamBottomRight || 'Bottom-Right' },
-                    { id: 'top_right', label: t.studio.facecamTopRight || 'Top-Right' },
-                    { id: 'bottom_left', label: t.studio.facecamBottomLeft || 'Bottom-Left' },
-                    { id: 'top_left', label: t.studio.facecamTopLeft || 'Top-Left' },
-                    { id: 'center', label: t.studio.facecamCenter || 'Center' },
+                    { id: 'auto', label: t.studio.facecamAuto },
+                    { id: 'bottom_right', label: t.studio.facecamBottomRight },
+                    { id: 'top_right', label: t.studio.facecamTopRight },
+                    { id: 'bottom_left', label: t.studio.facecamBottomLeft },
+                    { id: 'top_left', label: t.studio.facecamTopLeft },
+                    { id: 'center', label: t.studio.facecamCenter },
                   ].map(opt => (
                     <button
                       key={opt.id}
@@ -1598,31 +1662,31 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   ))}
                 </div>
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted, #a2a2a2)', marginTop: '0.35rem', margin: '0.35rem 0 0 0' }}>
-                  {t.studio.facecamHint || 'Tip: Select your webcam corner if auto-detection misses dark rooms or VTuber avatars.'}
+                  {t.studio.facecamHint}
                 </p>
               </div>
             )}
           </div>
 
           {/* 4. Title / Hook Banner */}
-          <div className="studio-card-group">
+          <div className="studio-card-group studio-title-banner-card" hidden={activeStudioTab !== 'text'}>
             <div className="group-header">
               <span className="group-title">{t.studio.titleBannerTitle}</span>
-              <span className="group-badge">
+              <span className="group-badge title-banner-position-badge">
                 {t.studio.customYBadge(safeTitleY)}
               </span>
             </div>
 
             {/* Visibility Selector */}
-            <div className="title-inputs-row" style={{ alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                {t.studio.subtitlesVisibilityLabel || "Banner Display:"}
+            <div className="title-inputs-row title-banner-visibility-row">
+              <span className="title-banner-field-label">
+                {t.studio.titleVisibilityLabel}
               </span>
               <select
-                className="studio-select"
+                className="studio-select title-banner-visibility-select"
+                aria-label={t.studio.titleVisibilityLabel}
                 value={titlePosition}
                 onChange={e => setTitlePosition(e.target.value as TitlePosition)}
-                style={{ minWidth: '130px' }}
               >
                 <option value="auto">{t.studio.titleVisible}</option>
                 <option value="none">{t.studio.titleDisabled}</option>
@@ -1633,15 +1697,17 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
             {titlePosition !== 'none' && (
               <>
                 {/* Active Clip Title Customizer */}
-                <div className="hook-clip-title-input-wrap" style={{ marginBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                    <label className="hook-input-label" style={{ margin: 0, fontWeight: 600 }}>
-                       {t.studio.clipTitleEditLabel || "Hook Title (Active Clip):"}
+                <div className="hook-clip-title-input-wrap">
+                  <div className="hook-clip-title-header">
+                    <label className="hook-input-label">
+                       {t.studio.clipTitleEditLabel}
                     </label>
                     {currentCustomTitle !== undefined && currentCustomTitle.trim() !== '' && currentCustomTitle !== (currentPreviewClip?.title_suggestion || currentPreviewClip?.title) && (
                       <button
                         type="button"
                         className="reset-title-link-btn"
+                        aria-label={t.studio.resetToAiTitle}
+                        title={t.studio.resetToAiTitle}
                         onClick={() => {
                           setCustomClipTitles(prev => {
                             const next = { ...prev };
@@ -1649,18 +1715,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                             return next;
                           });
                         }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--primary, #b1b1b1)',
-                          fontSize: '0.74rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          padding: 0,
-                          textDecoration: 'underline'
-                        }}
                       >
-                        ↺ {t.studio.resetToAiTitle || "Reset to AI Title"}
+                        <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14" fill="none">
+                          <path d="M3.2 5.1A5.4 5.4 0 1 1 2.7 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          <path d="M1.8 2.8v3.1h3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span>{t.studio.resetToAiTitle}</span>
                       </button>
                     )}
                   </div>
@@ -1719,12 +1779,12 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
 
                 {/* Batch Helper Note */}
-                <div style={{ marginTop: '0.5rem', fontSize: '0.74rem', color: 'var(--text-muted, #a2a2a2)', lineHeight: 1.4 }}>
+                <div className="hook-batch-helper-note">
                   {t.studio.batchTitleNote}
                 </div>
 
                 {/* Title Duration Option */}
-                <div className="studio-sub-toggle" style={{ marginTop: '0.75rem' }}>
+                <div className="studio-sub-toggle title-banner-control title-banner-duration-control">
                   <span className="sub-toggle-label">{t.studio.titleDurationLabel}</span>
                   <div className="toggle-pill-group">
                     <button
@@ -1751,88 +1811,39 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   </div>
                 </div>
 
-                {/* Title Font Family with Dedicated Dropzone */}
-                <div className="studio-font-section">
+                {/* Title Font Family */}
+                <div className="studio-font-section title-banner-font-section">
                   <div className="font-section-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                      <span className="sub-toggle-label" style={{ margin: 0, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                         {t.studio.titleFontFamily || "Title Font Family"}
+                    <div className="title-banner-font-name-row">
+                      <span className="sub-toggle-label title-banner-sub-toggle-label">
+                         {t.studio.titleFontFamily}
                       </span>
-                      <span className="badge" style={{ fontSize: '0.68rem', padding: '0.1rem 0.45rem', opacity: 0.85 }}>
+                      <span className="badge title-banner-font-badge">
                         {titleFont}
                       </span>
                     </div>
                   </div>
 
-                  {/* Title Font Pills List */}
-                  <div className="toggle-pill-group" style={{ flexWrap: 'wrap', width: '100%' }}>
-                    {availableFonts.map(font => (
+                  {/* Title font options are limited to the ECLIPSE type system. */}
+                  <div className="toggle-pill-group title-banner-font-options">
+                    {fontOptions.map(font => (
                       <button
-                        key={`title-font-${font.name}`}
+                        key={`title-font-${font}`}
                         type="button"
-                        className={`pill-btn ${titleFont === font.name ? 'active' : ''}`}
-                        onClick={() => setTitleFont(font.name)}
-                        style={{ fontFamily: font.name, fontSize: '0.78rem' }}
+                        className={`pill-btn ${titleFont === font ? 'active' : ''}`}
+                        onClick={() => setTitleFont(font)}
+                        style={{ fontFamily: font, fontSize: '0.78rem' }}
                       >
-                        {font.name}
-                        {font.is_custom && <span style={{ marginLeft: '4px', fontSize: '0.62rem', opacity: 0.85, color: '#c8c8c8' }}></span>}
+                        {font}
                       </button>
                     ))}
-                  </div>
-
-                  {/* Title Font Drag & Drop Dropzone */}
-                  <div
-                    className={`font-dropzone ${isTitleFontDragging ? 'drag-over' : ''}`}
-                    onClick={() => titleFontInputRef.current?.click()}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsTitleFontDragging(true);
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsTitleFontDragging(false);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsTitleFontDragging(false);
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) handleUploadFont(file, 'title');
-                    }}
-                    title="Drag and drop or click to upload custom font file (.ttf, .otf, .woff, .woff2)"
-                  >
-                    <input
-                      ref={titleFontInputRef}
-                      type="file"
-                      accept=".ttf,.otf,.woff,.woff2"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleUploadFont(file, 'title');
-                        e.target.value = '';
-                      }}
-                      disabled={isUploadingFont}
-                    />
-                    <span className="font-dropzone-icon">
-                      {isUploadingFont ? 'UPLOADING' : ''}
-                    </span>
-                    <div className="font-dropzone-text">
-                      <span className="font-dropzone-title">
-                        {isUploadingFont ? (t.studio.uploadingFont || 'Uploading font...') : (t.studio.dropFontHint || 'Upload Custom Font (.ttf, .otf, .woff, .woff2)')}
-                      </span>
-                      <span className="font-dropzone-desc">
-                        {t.studio.dropFontSub || 'Drag & drop font file here or click to browse'}
-                      </span>
-                    </div>
                   </div>
                 </div>
 
                 {/* Title Text Size Option with Uncapped Manual Pixel Input */}
-                <div className="studio-sub-toggle" style={{ marginTop: '0.75rem' }}>
-                  <span className="sub-toggle-label">{t.studio.titleFontSize || "Title Text Size:"}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                <div className="studio-sub-toggle title-banner-control title-banner-font-size-control">
+                  <span className="sub-toggle-label">{t.studio.titleFontSize}</span>
+                  <div className="title-banner-size-options">
                     <div className="toggle-pill-group">
                       <button
                         type="button"
@@ -1869,11 +1880,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         className={`pill-btn ${titleFontSize === 'custom' ? 'active' : ''}`}
                         onClick={() => setTitleFontSize('custom')}
                       >
-                        {t.studio.sizeCustom || 'Custom'}
+                        {t.studio.sizeCustom}
                       </button>
                     </div>
                     {/* Manual Numeric PX Input (Unlimited, 1 - 1000px) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <div className="title-banner-custom-size-input">
                       <input
                         type="number"
                         min="1"
@@ -1893,25 +1904,17 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           setTitleFontSizePx(val);
                           setTitleFontSize('custom');
                         }}
-                        className="studio-text-input"
-                        style={{
-                          width: '72px',
-                          padding: '0.22rem 0.45rem',
-                          fontSize: '0.78rem',
-                          textAlign: 'center',
-                          borderRadius: '6px',
-                          border: titleFontSize === 'custom' ? '1px solid var(--primary, #b1b1b1)' : '1px solid rgba(255, 255, 255, 0.15)',
-                        }}
-                        title="Enter custom title font size in pixels (px, 1 - 1000)"
+                        className="studio-text-input title-banner-custom-size-field"
+                        title={t.studio.fontSizeTooltip}
                       />
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>px</span>
+                      <span className="title-banner-px-unit">px</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Title Letter Style Option */}
-                <div className="studio-sub-toggle" style={{ marginTop: '0.75rem' }}>
-                  <span className="sub-toggle-label">{t.studio.titleLetterStyle || "Title Letter Style:"}</span>
+                <div className="studio-sub-toggle title-banner-control title-banner-letter-style-control">
+                  <span className="sub-toggle-label">{t.studio.titleLetterStyle}</span>
                   <div className="toggle-pill-group">
                     <button
                       type="button"
@@ -1938,22 +1941,26 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
 
                 {/* Title Vertical Position Controls */}
-                <div className="studio-sub-toggle" style={{ marginTop: '0.85rem', flexDirection: 'column', alignItems: 'stretch' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                    <span className="sub-toggle-label" style={{ margin: 0 }}>
-                      {t.studio.titleYLabel || " Title Vertical Position:"}
+                <div className="studio-sub-toggle title-banner-control title-banner-position-control">
+                  <div className="title-banner-position-header">
+                    <span className="sub-toggle-label">
+                      {t.studio.titleYLabel}
                     </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span className="badge" style={{ fontSize: '0.74rem', padding: '0.15rem 0.45rem' }}>
+                    <div className="title-banner-position-actions">
+                      <span className="badge title-banner-y-value-badge">
                         {t.studio.titleYVal(safeTitleY, titleLineCount >= 3)}
                       </span>
                       <button
                         type="button"
-                        className="reset-btn"
+                        className="reset-btn title-banner-reset-position-btn"
+                        aria-label={t.studio.resetPosition}
                         onClick={handleResetTitlePosition}
                         title={t.studio.resetPositionTooltip}
-                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', border: '1px solid rgba(255, 255, 255, 0.15)', background: 'transparent', color: 'var(--text-muted)', borderRadius: '4px', cursor: 'pointer' }}
                       >
+                        <svg aria-hidden="true" viewBox="0 0 16 16" width="13" height="13" fill="none">
+                          <path d="M3.2 5.1A5.4 5.4 0 1 1 2.7 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          <path d="M1.8 2.8v3.1h3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                         {t.studio.resetPosition}
                       </button>
                     </div>
@@ -1968,36 +1975,33 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                       setTitleYPercent(Number(e.target.value));
                       setIsCustomTitleY(true);
                     }}
-                    className="position-slider"
+                    className="position-slider title-banner-position-slider"
                   />
-                  <div className="quick-presets-row" style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                  <div className="quick-presets-row title-banner-quick-presets">
                     <button
                       type="button"
-                      className={`pill-btn ${safeTitleY === 8 ? 'active' : ''}`}
+                      className={`pill-btn title-banner-quick-preset ${safeTitleY === 8 ? 'active' : ''}`}
                       onClick={() => {
                         setTitleYPercent(8);
                         setIsCustomTitleY(true);
                       }}
-                      style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                     >
                       {t.studio.quickHigh(8)}
                     </button>
                     <button
                       type="button"
-                      className={`pill-btn ${safeTitleY === getDefaultPositions(aspectRatio, titleLineCount, streamerPreset).titleY ? 'active' : ''}`}
+                      className={`pill-btn title-banner-quick-preset ${safeTitleY === getDefaultPositions(aspectRatio, titleLineCount, streamerPreset).titleY ? 'active' : ''}`}
                       onClick={handleResetTitlePosition}
-                      style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                     >
                       {t.studio.quickDefault(`${getDefaultPositions(aspectRatio, titleLineCount, streamerPreset).titleY}%`)}
                     </button>
                     <button
                       type="button"
-                      className={`pill-btn ${safeTitleY === Math.min(22, maxTitleY) ? 'active' : ''}`}
+                      className={`pill-btn title-banner-quick-preset ${safeTitleY === Math.min(22, maxTitleY) ? 'active' : ''}`}
                       onClick={() => {
                         setTitleYPercent(Math.min(22, maxTitleY));
                         setIsCustomTitleY(true);
                       }}
-                      style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                     >
                       {t.studio.quickLower(Math.min(22, maxTitleY))}
                     </button>
@@ -2008,19 +2012,20 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 5. Subtitle Style & Font */}
-          <div className="studio-card-group">
+          <div className="studio-card-group studio-subtitle-card" hidden={activeStudioTab !== 'text'}>
             <div className="group-header">
               <span className="group-title">{t.studio.subtitlesTitle}</span>
               <span className="group-badge success-badge">{t.studio.strictlyOneLine}</span>
             </div>
 
             {/* Subtitle Visibility Selector */}
-            <div className="title-inputs-row" style={{ alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+            <div className="title-inputs-row subtitle-visibility-row">
+              <span className="subtitle-field-label">
                 {t.studio.subtitlesVisibilityLabel}
               </span>
               <select
-                className="studio-select"
+                className="studio-select subtitle-visibility-select"
+                aria-label={t.studio.subtitlesVisibilityLabel}
                 value={captionStyle !== 'none' ? 'visible' : 'disabled'}
                 onChange={e => {
                   const isVis = e.target.value === 'visible';
@@ -2033,7 +2038,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     setCaptionStyle('none');
                   }
                 }}
-                style={{ minWidth: '130px' }}
               >
                 <option value="visible">{t.studio.subtitlesVisible}</option>
                 <option value="disabled">{t.studio.subtitlesDisabled}</option>
@@ -2046,10 +2050,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               </div>
             )}
 
-            <div className={`caption-styles-grid ${captionStyle === 'none' ? 'subtitles-dimmed' : ''}`}>
+            <div className={`caption-styles-grid subtitle-styles-grid ${captionStyle === 'none' ? 'subtitles-dimmed' : ''}`}>
               <button
                 type="button"
-                className={`caption-style-card viral-pop ${captionStyle === 'viral_pop' ? 'active' : ''}`}
+                className={`caption-style-card subtitle-style-card viral-pop ${captionStyle === 'viral_pop' ? 'active' : ''}`}
                 onClick={() => {
                   setCaptionStyle('viral_pop');
                   setLastActiveCaptionStyle('viral_pop');
@@ -2063,7 +2067,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
               <button
                 type="button"
-                className={`caption-style-card beast-punch ${captionStyle === 'beast_punch' ? 'active' : ''}`}
+                className={`caption-style-card subtitle-style-card beast-punch ${captionStyle === 'beast_punch' ? 'active' : ''}`}
                 onClick={() => {
                   setCaptionStyle('beast_punch');
                   setLastActiveCaptionStyle('beast_punch');
@@ -2077,7 +2081,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
               <button
                 type="button"
-                className={`caption-style-card cyber-violet ${captionStyle === 'cyber_violet' ? 'active' : ''}`}
+                className={`caption-style-card subtitle-style-card cyber-violet ${captionStyle === 'cyber_violet' ? 'active' : ''}`}
                 onClick={() => {
                   setCaptionStyle('cyber_violet');
                   setLastActiveCaptionStyle('cyber_violet');
@@ -2091,7 +2095,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
               <button
                 type="button"
-                className={`caption-style-card fire-red ${captionStyle === 'fire_red' ? 'active' : ''}`}
+                className={`caption-style-card subtitle-style-card fire-red ${captionStyle === 'fire_red' ? 'active' : ''}`}
                 onClick={() => {
                   setCaptionStyle('fire_red');
                   setLastActiveCaptionStyle('fire_red');
@@ -2105,7 +2109,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
               <button
                 type="button"
-                className={`caption-style-card electric-cyan ${captionStyle === 'electric_cyan' ? 'active' : ''}`}
+                className={`caption-style-card subtitle-style-card electric-cyan ${captionStyle === 'electric_cyan' ? 'active' : ''}`}
                 onClick={() => {
                   setCaptionStyle('electric_cyan');
                   setLastActiveCaptionStyle('electric_cyan');
@@ -2119,7 +2123,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
               <button
                 type="button"
-                className={`caption-style-card golden-aura ${captionStyle === 'golden_aura' ? 'active' : ''}`}
+                className={`caption-style-card subtitle-style-card golden-aura ${captionStyle === 'golden_aura' ? 'active' : ''}`}
                 onClick={() => {
                   setCaptionStyle('golden_aura');
                   setLastActiveCaptionStyle('golden_aura');
@@ -2133,7 +2137,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
               <button
                 type="button"
-                className={`caption-style-card clean-minimal ${captionStyle === 'clean_minimal' ? 'active' : ''}`}
+                className={`caption-style-card subtitle-style-card clean-minimal ${captionStyle === 'clean_minimal' ? 'active' : ''}`}
                 onClick={() => {
                   setCaptionStyle('clean_minimal');
                   setLastActiveCaptionStyle('clean_minimal');
@@ -2147,7 +2151,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
               <button
                 type="button"
-                className={`caption-style-card none ${captionStyle === 'none' ? 'active' : ''}`}
+                className={`caption-style-card subtitle-style-card none ${captionStyle === 'none' ? 'active' : ''}`}
                 onClick={() => setCaptionStyle('none')}
               >
                 <div className="caption-preview-text">{t.studio.styleNone}</div>
@@ -2157,88 +2161,39 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
             {captionStyle !== 'none' && (
               <>
-                {/* Subtitle Font Family with Dedicated Dropzone */}
+                {/* Subtitle Font Family */}
                 <div className="studio-font-section">
                   <div className="font-section-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                      <span className="sub-toggle-label" style={{ margin: 0, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      <span className="sub-toggle-label subtitle-control-label">
                          {t.studio.fontFamily}
                       </span>
-                      <span className="badge" style={{ fontSize: '0.68rem', padding: '0.1rem 0.45rem', opacity: 0.85 }}>
+                      <span className="badge subtitle-font-badge">
                         {captionFont}
                       </span>
                     </div>
                   </div>
 
-                  {/* Subtitle Font Pills List */}
-                  <div className="toggle-pill-group" style={{ flexWrap: 'wrap', width: '100%' }}>
-                    {availableFonts.map(font => (
+                  {/* Subtitle font options are limited to the ECLIPSE type system. */}
+                  <div className="toggle-pill-group subtitle-font-options">
+                    {fontOptions.map(font => (
                       <button
-                        key={`sub-font-${font.name}`}
+                        key={`sub-font-${font}`}
                         type="button"
-                        className={`pill-btn ${captionFont === font.name ? 'active' : ''}`}
-                        onClick={() => setCaptionFont(font.name)}
-                        style={{ fontFamily: font.name, fontSize: '0.78rem' }}
+                        className={`pill-btn ${captionFont === font ? 'active' : ''}`}
+                        onClick={() => setCaptionFont(font)}
+                        style={{ fontFamily: font, fontSize: '0.78rem' }}
                       >
-                        {font.name}
-                        {font.is_custom && <span style={{ marginLeft: '4px', fontSize: '0.62rem', opacity: 0.85, color: '#c8c8c8' }}></span>}
+                        {font}
                       </button>
                     ))}
-                  </div>
-
-                  {/* Subtitle Font Drag & Drop Dropzone */}
-                  <div
-                    className={`font-dropzone ${isSubFontDragging ? 'drag-over' : ''}`}
-                    onClick={() => subtitleFontInputRef.current?.click()}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsSubFontDragging(true);
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsSubFontDragging(false);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsSubFontDragging(false);
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) handleUploadFont(file, 'subtitle');
-                    }}
-                    title="Drag and drop or click to upload custom font file (.ttf, .otf, .woff, .woff2)"
-                  >
-                    <input
-                      ref={subtitleFontInputRef}
-                      type="file"
-                      accept=".ttf,.otf,.woff,.woff2"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleUploadFont(file, 'subtitle');
-                        e.target.value = '';
-                      }}
-                      disabled={isUploadingFont}
-                    />
-                    <span className="font-dropzone-icon">
-                      {isUploadingFont ? 'UPLOADING' : ''}
-                    </span>
-                    <div className="font-dropzone-text">
-                      <span className="font-dropzone-title">
-                        {isUploadingFont ? (t.studio.uploadingFont || 'Uploading font...') : (t.studio.dropFontHint || 'Upload Custom Font (.ttf, .otf, .woff, .woff2)')}
-                      </span>
-                      <span className="font-dropzone-desc">
-                        {t.studio.dropFontSub || 'Drag & drop font file here or click to browse'}
-                      </span>
-                    </div>
                   </div>
                 </div>
 
                 {/* Subtitle Font Size Presets & Uncapped Manual PX Input */}
-                <div className="studio-sub-toggle" style={{ marginTop: '0.75rem' }}>
+                <div className="studio-sub-toggle subtitle-control subtitle-size-control">
                   <span className="sub-toggle-label">{t.studio.fontSize}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                  <div className="subtitle-size-options">
                     <div className="toggle-pill-group">
                       <button
                         type="button"
@@ -2275,11 +2230,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         className={`pill-btn ${fontSize === 'custom' ? 'active' : ''}`}
                         onClick={() => setFontSize('custom')}
                       >
-                        {t.studio.sizeCustom || 'Custom'}
+                        {t.studio.sizeCustom}
                       </button>
                     </div>
                     {/* Manual Numeric PX Input (Unlimited, 1 - 1000px) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <div className="subtitle-custom-size-input">
                       <input
                         type="number"
                         min="1"
@@ -2299,24 +2254,16 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           setFontSizePx(val);
                           setFontSize('custom');
                         }}
-                        className="studio-text-input"
-                        style={{
-                          width: '72px',
-                          padding: '0.22rem 0.45rem',
-                          fontSize: '0.78rem',
-                          textAlign: 'center',
-                          borderRadius: '6px',
-                          border: fontSize === 'custom' ? '1px solid var(--primary, #b1b1b1)' : '1px solid rgba(255, 255, 255, 0.15)',
-                        }}
-                        title="Enter custom subtitle font size in pixels (px, 1 - 1000)"
+                        className="studio-text-input subtitle-custom-size-field"
+                        title={t.studio.fontSizeTooltip}
                       />
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>px</span>
+                      <span className="subtitle-px-unit">px</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Text Letter Style Presets */}
-                <div className="studio-sub-toggle" style={{ marginTop: '0.75rem' }}>
+                <div className="studio-sub-toggle subtitle-control subtitle-case-control">
                   <span className="sub-toggle-label">{t.studio.letterStyle}</span>
                   <div className="toggle-pill-group">
                     <button
@@ -2344,7 +2291,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
 
                 {/* Subtitle Placement & Vertical Position */}
-                <div className="studio-sub-toggle" style={{ marginTop: '0.85rem' }}>
+                <div className="studio-sub-toggle subtitle-control subtitle-placement-control">
                   <span className="sub-toggle-label">{t.studio.subPlacement}</span>
                   <div className="toggle-pill-group">
                     <button
@@ -2365,22 +2312,26 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
 
                 {subtitlePositionMode === 'bottom' ? (
-                  <div className="studio-sub-toggle" style={{ marginTop: '0.75rem', flexDirection: 'column', alignItems: 'stretch' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <span className="sub-toggle-label" style={{ margin: 0 }}>
-                        {t.studio.subYBottomLabel || " Subtitle Bottom Position:"}
+                  <div className="studio-sub-toggle subtitle-control subtitle-position-control">
+                    <div className="subtitle-position-header">
+                      <span className="sub-toggle-label">
+                        {t.studio.subYBottomLabel}
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="badge" style={{ fontSize: '0.74rem', padding: '0.15rem 0.45rem' }}>
+                      <div className="subtitle-position-actions">
+                        <span className="badge subtitle-position-badge">
                           {t.studio.subYBottomVal(safeSubtitleY)}
                         </span>
                         <button
                           type="button"
-                          className="reset-btn"
+                          aria-label={t.studio.resetPosition}
                           onClick={handleResetSubtitlePosition}
                           title={t.studio.resetPositionTooltip}
-                          style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', border: '1px solid rgba(255, 255, 255, 0.15)', background: 'transparent', color: 'var(--text-muted)', borderRadius: '4px', cursor: 'pointer' }}
+                          className="reset-btn subtitle-reset-position-btn"
                         >
+                          <svg aria-hidden="true" viewBox="0 0 16 16" width="13" height="13" fill="none">
+                            <path d="M3.2 5.1A5.4 5.4 0 1 1 2.7 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            <path d="M1.8 2.8v3.1h3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
                           {t.studio.resetPosition}
                         </button>
                       </div>
@@ -2394,12 +2345,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                       onChange={(e) => setSubtitleYPercent(Number(e.target.value))}
                       className="position-slider"
                     />
-                    <div className="quick-presets-row" style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                    <div className="quick-presets-row subtitle-quick-presets">
                       <button
                         type="button"
                         className={`pill-btn ${safeSubtitleY === 12 ? 'active' : ''}`}
                         onClick={() => setSubtitleYPercent(12)}
-                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                       >
                         {t.studio.quickLow(12)}
                       </button>
@@ -2407,7 +2357,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         type="button"
                         className={`pill-btn ${safeSubtitleY === getDefaultPositions(aspectRatio, titleLineCount, streamerPreset).subtitleY ? 'active' : ''}`}
                         onClick={handleResetSubtitlePosition}
-                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                       >
                         {t.studio.quickSnugDefault(`${getDefaultPositions(aspectRatio, titleLineCount, streamerPreset).subtitleY}%`)}
                       </button>
@@ -2415,7 +2364,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         type="button"
                         className={`pill-btn ${safeSubtitleY === 32 ? 'active' : ''}`}
                         onClick={() => setSubtitleYPercent(32)}
-                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                       >
                         {t.studio.quickMid(32)}
                       </button>
@@ -2423,20 +2371,19 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         type="button"
                         className={`pill-btn ${safeSubtitleY === 42 ? 'active' : ''}`}
                         onClick={() => setSubtitleYPercent(42)}
-                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                       >
                         {t.studio.quickHigh ? t.studio.quickHigh(42) : `High (42%)`}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="studio-sub-toggle" style={{ marginTop: '0.75rem', flexDirection: 'column', alignItems: 'stretch' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <span className="sub-toggle-label" style={{ margin: 0 }}>
-                        {t.studio.subYCenterLabel || " Subtitle Center Vertical Position:"}
+                  <div className="studio-sub-toggle subtitle-control subtitle-position-control">
+                    <div className="subtitle-position-header">
+                      <span className="sub-toggle-label">
+                        {t.studio.subYCenterLabel}
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="badge" style={{ fontSize: '0.74rem', padding: '0.15rem 0.45rem' }}>
+                      <div className="subtitle-position-actions">
+                        <span className="badge subtitle-position-badge">
                           {t.studio.subYCenterVal(
                             safeSubCenterY,
                             safeSubCenterY === 50
@@ -2448,11 +2395,15 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         </span>
                         <button
                           type="button"
-                          className="reset-btn"
+                          aria-label={t.studio.resetPosition}
                           onClick={handleResetSubtitlePosition}
                           title={t.studio.resetPositionTooltip}
-                          style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', border: '1px solid rgba(255, 255, 255, 0.15)', background: 'transparent', color: 'var(--text-muted)', borderRadius: '4px', cursor: 'pointer' }}
+                          className="reset-btn subtitle-reset-position-btn"
                         >
+                          <svg aria-hidden="true" viewBox="0 0 16 16" width="13" height="13" fill="none">
+                            <path d="M3.2 5.1A5.4 5.4 0 1 1 2.7 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            <path d="M1.8 2.8v3.1h3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
                           {t.studio.resetPosition}
                         </button>
                       </div>
@@ -2466,12 +2417,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                       onChange={(e) => setSubtitleCenterYPercent(Number(e.target.value))}
                       className="position-slider"
                     />
-                    <div className="quick-presets-row" style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                    <div className="quick-presets-row subtitle-quick-presets">
                       <button
                         type="button"
                         className={`pill-btn ${safeSubCenterY === Math.max(minCenterY, 40) ? 'active' : ''}`}
                         onClick={() => setSubtitleCenterYPercent(Math.max(minCenterY, 40))}
-                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                       >
                         {t.studio.quickUpper(Math.max(minCenterY, 40))}
                       </button>
@@ -2479,7 +2429,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         type="button"
                         className={`pill-btn ${safeSubCenterY === 50 ? 'active' : ''}`}
                         onClick={() => setSubtitleCenterYPercent(50)}
-                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                       >
                         {t.studio.quickDeadCenter(50)}
                       </button>
@@ -2487,7 +2436,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         type="button"
                         className={`pill-btn ${safeSubCenterY === Math.min(maxCenterY, 60) ? 'active' : ''}`}
                         onClick={() => setSubtitleCenterYPercent(Math.min(maxCenterY, 60))}
-                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}
                       >
                         {t.studio.quickLower(Math.min(maxCenterY, 60))}
                       </button>
@@ -2499,9 +2447,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 6. Background Music (BGM) */}
-          <div className="studio-card-group">
-            <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div className="studio-card-group studio-audio-setting-card audio-bgm-card" hidden={activeStudioTab !== 'audio'}>
+            <div className="group-header audio-card-header">
+              <div className="audio-card-title-row">
                 <span className="group-title">{t.studio.bgmTitle}</span>
                 {bgmFilePath && (
                   <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
@@ -2668,9 +2616,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 6. Hook Sound Effect (SFX) */}
-          <div className="studio-card-group">
-            <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div className="studio-card-group studio-audio-setting-card audio-sfx-card" hidden={activeStudioTab !== 'audio'}>
+            <div className="group-header audio-card-header">
+              <div className="audio-card-title-row">
                 <span className="group-title">{t.studio.hookSfxTitle}</span>
                 <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
                   <input
@@ -2680,13 +2628,13 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     style={{ accentColor: 'var(--primary)', width: '16px', height: '16px', cursor: 'pointer' }}
                   />
                 </label>
-                <span className={`status-pill ${hookSfxEnabled && hookSfxFilePath ? 'pill-active' : ''}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.5rem' }}>
-                  {hookSfxEnabled && hookSfxFilePath ? t.studio.hookSfxActiveBadge : t.studio.bgmOptionalBadge}
-                </span>
               </div>
+              <span className={`group-badge ${hookSfxEnabled && hookSfxFilePath ? 'accent-badge' : ''}`}>
+                {hookSfxEnabled && hookSfxFilePath ? t.studio.hookSfxActiveBadge : t.studio.bgmOptionalBadge}
+              </span>
             </div>
 
-            <div className="group-content" style={{ marginTop: '0.6rem' }}>
+            <div className="group-content audio-card-content">
               {!hookSfxFilePath ? (
                 <label
                   className={`bgm-dropzone ${isHookSfxDragging ? 'drag-over' : ''}`}
@@ -2796,17 +2744,17 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 7. Original Clip Voice Audio Boost */}
-          <div className="studio-card-group">
-            <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div className="studio-card-group studio-audio-setting-card audio-voice-card" hidden={activeStudioTab !== 'audio'}>
+            <div className="group-header audio-card-header">
+              <div className="audio-card-title-row">
                 <span className="group-title">{t.studio.rawAudioTitle}</span>
-                <span className={`status-pill ${originalAudioVolume > 100 ? 'pill-active' : ''}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.5rem' }}>
-                  {originalAudioVolume > 100 ? ` Boosted (${originalAudioVolume}%)` : `${originalAudioVolume}% Volume`}
-                </span>
               </div>
+              <span className={`group-badge ${originalAudioVolume > 100 ? 'accent-badge' : ''}`}>
+                {originalAudioVolume > 100 ? `Boosted · ${originalAudioVolume}%` : `${originalAudioVolume}% Volume`}
+              </span>
             </div>
 
-            <div className="group-content" style={{ marginTop: '0.6rem' }}>
+            <div className="group-content audio-card-content">
               <div className="slider-control-item">
                 <div className="slider-label-row">
                   <span className="slider-label">{t.studio.rawAudioVolumeLabel}</span>
@@ -2846,9 +2794,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 8. Video Watermark Branding */}
-          <div className="studio-card-group">
-            <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div className="studio-card-group studio-audio-setting-card audio-watermark-card" hidden={activeStudioTab !== 'audio'}>
+            <div className="group-header audio-card-header">
+              <div className="audio-card-title-row">
                 <span className="group-title">{t.studio.watermarkTitle}</span>
                 <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
                   <input
@@ -2858,14 +2806,14 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                     style={{ accentColor: 'var(--primary)', width: '16px', height: '16px', cursor: 'pointer' }}
                   />
                 </label>
-                <span className={`status-pill ${watermarkEnabled ? 'pill-active' : ''}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.5rem' }}>
-                  {watermarkEnabled ? t.studio.watermarkBadgeEnabled : t.studio.watermarkBadgeDisabled}
-                </span>
               </div>
+              <span className={`group-badge ${watermarkEnabled ? 'accent-badge' : ''}`}>
+                {watermarkEnabled ? t.studio.watermarkBadgeEnabled : t.studio.watermarkBadgeDisabled}
+              </span>
             </div>
 
             {watermarkEnabled && (
-              <div className="group-content" style={{ marginTop: '0.6rem' }}>
+              <div className="group-content audio-card-content">
                 {/* Type Selection */}
                 <div className="watermark-type-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.75rem' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{t.studio.watermarkTypeLabel}</span>
@@ -2995,15 +2943,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           key={sz}
                           type="button"
                           className={`quick-sz-btn ${watermarkSize === sz ? 'active' : ''}`}
-                          style={{
-                            padding: '0.2rem 0.5rem',
-                            fontSize: '0.72rem',
-                            borderRadius: '4px',
-                            background: watermarkSize === sz ? 'var(--primary)' : 'rgba(255, 255, 255, 0.06)',
-                            color: watermarkSize === sz ? '#ffffff' : 'var(--text-muted)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            cursor: 'pointer',
-                          }}
                           onClick={() => setWatermarkSize(sz)}
                         >
                           {sz}%
@@ -3131,7 +3070,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 8. Hardware Acceleration & Video Encoder */}
-          <div className="studio-card-group">
+          <div className="studio-card-group" hidden={activeStudioTab !== 'export'}>
             <div className="group-header">
               <span className="group-title"> {t.studio.hwTitle}</span>
               <span className="group-badge">{t.studio.hwBadge}</span>
@@ -3224,7 +3163,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* Video File Name Option */}
-          <div className="studio-card-group">
+          <div className="studio-card-group" hidden={activeStudioTab !== 'export'}>
             <div className="group-header">
               <span className="group-title">{t.studio.fileNameTitle}</span>
               <span className="group-badge">{t.studio.fileNameBadge}</span>
@@ -3273,7 +3212,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* Batch Clip Hook / Title Customizer for All Selected Clips */}
-          <div className="studio-card-group">
+          <div className="studio-card-group" data-studio-order="2" hidden={activeStudioTab !== 'clips'}>
             <div className="group-header">
               <span className="group-title">{t.studio.batchClipTitlesTitle}</span>
               <span className="group-badge">
@@ -3281,7 +3220,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               </span>
             </div>
 
-            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0', lineHeight: 1.45 }}>
+            <p className="batch-clip-titles-desc">
               {t.studio.batchClipTitlesDesc}
             </p>
 
@@ -3332,7 +3271,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                               }}
                               title={t.studio.resetToAiTitle}
                             >
-                              ↺ {t.studio.resetToAiTitle}
+                              <svg aria-hidden="true" viewBox="0 0 16 16" width="13" height="13" fill="none">
+                                <path d="M3.2 5.1A5.4 5.4 0 1 1 2.7 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                                <path d="M1.8 2.8v3.1h3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              <span>{t.studio.resetToAiTitle}</span>
                             </button>
                           )}
                           <button
@@ -3371,7 +3314,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{t.studio.batchClipTitlesCombinedPreview}</span>
                           <span>
                             {titlePrefix && <span className="pfx-highlight">{titlePrefix}</span>}
-                            <span className="base-highlight">{baseTitle || 'YOUR VIRAL HOOK TITLE'}</span>
+                            <span className="base-highlight">{baseTitle || t.studio.previewSampleTitle}</span>
                             {titleSuffix && <span className="sfx-highlight">{titleSuffix}</span>}
                           </span>
                         </div>
@@ -3384,31 +3327,17 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
           </div>
 
           {/* 9. Selected Clips Checklist */}
-          <div className="studio-card-group">
-            <div className="group-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '0.5rem' }}>
+          <div className="studio-card-group" data-studio-order="1" hidden={activeStudioTab !== 'clips'}>
+            <div className="group-header batch-checklist-header">
               <span className="group-title">
                 {t.studio.batchChecklist(selectedClips.length, allClips.length)}
               </span>
               {allClips.length > 0 && (
                 <button
                   type="button"
-                  className="studio-checklist-toggle-btn"
+                  className={`studio-checklist-toggle-btn ${selectedClips.length === allClips.length ? 'all-selected' : ''}`}
                   onClick={handleToggleAllClips}
                   title={selectedClips.length === allClips.length ? t.studio.unmarkAllClips : t.studio.markAllClips}
-                  style={{
-                    background: selectedClips.length === allClips.length ? 'rgba(132, 132, 132, 0.12)' : 'rgba(128, 128, 128, 0.15)',
-                    border: selectedClips.length === allClips.length ? '1px solid rgba(132, 132, 132, 0.35)' : '1px solid rgba(128, 128, 128, 0.4)',
-                    color: selectedClips.length === allClips.length ? '#9b9b9b' : 'var(--primary, #808080)',
-                    borderRadius: '6px',
-                    padding: '0.22rem 0.55rem',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
-                    transition: 'all 0.2s ease',
-                  }}
                 >
                   {selectedClips.length === allClips.length ? t.studio.unmarkAllClips : t.studio.markAllClips}
                 </button>
@@ -3454,19 +3383,10 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         {/* Right Column: Real Video Live Preview */}
         <div className="studio-preview-pane">
           <div className="preview-sticky-wrap">
-            <div className="preview-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.45rem 0.6rem' }}>
-              <span className="preview-title" style={{ fontWeight: 700, fontSize: '0.88rem' }}>{t.studio.livePreview}</span>
+            <div className="preview-header-bar">
+              <span className="preview-title">{t.studio.livePreview}</span>
               <span
-                className="preview-indicator"
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  color: '#454545',
-                  background: '#f3f3f3',
-                  border: '1px solid #dedede',
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: '6px',
-                }}
+                className={`preview-indicator ${!playerReady ? 'is-loading' : isPlaying ? 'is-playing' : 'is-ready'}`}
               >
                 {!playerReady ? t.studio.previewLoading : isPlaying ? t.studio.previewPlaying : t.studio.previewReady}
               </span>
@@ -3686,7 +3606,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 )}
 
                 {/* Subtitle Overlay with Real-time Up/Down Position & Scaled Font */}
-                {captionStyle !== 'none' && (
+                {captionStyle !== 'none' && previewCaption && (
                   <div
                     className={`wireframe-caption-overlay style-${captionStyle}${subtitlePositionMode === 'center' ? ' mode-center' : ''}`}
                     style={{
@@ -3722,47 +3642,14 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         display: 'inline-block',
                       }}
                     >
-                      {captionStyle === 'viral_pop' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('VIRAL', textCase)}</span>{' '}
-                          <span style={{ color: '#e4e4e4' }}>{applyLetterCase('POP', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'beast_punch' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('UNREAL', textCase)}</span>{' '}
-                          <span style={{ color: '#dddddd' }}>{applyLetterCase('HACK', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'cyber_violet' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('CYBER', textCase)}</span>{' '}
-                          <span style={{ color: '#8a8a8a' }}>{applyLetterCase('PUNCH', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'fire_red' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('HOT', textCase)}</span>{' '}
-                          <span style={{ color: '#858585' }}>{applyLetterCase('FIRE', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'electric_cyan' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('ELECTRIC', textCase)}</span>{' '}
-                          <span style={{ color: '#d9d9d9' }}>{applyLetterCase('CYAN', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'golden_aura' && (
-                        <>
-                          <span style={{ color: '#ffffff' }}>{applyLetterCase('GOLDEN', textCase)}</span>{' '}
-                          <span style={{ color: '#c5c5c5' }}>{applyLetterCase('MOMENT', textCase)}</span>
-                        </>
-                      )}
-                      {captionStyle === 'clean_minimal' && (
-                        <span style={{ color: '#ffffff' }}>
-                          {applyLetterCase('CLEAN SUBTITLE', textCase)}
-                        </span>
-                      )}
+                      {previewCaption.words.map((word, index) => (
+                        <React.Fragment key={`${index}-${word}`}>
+                          {index > 0 ? ' ' : ''}
+                          <span style={{ color: index === previewCaption.activeIndex ? captionHighlightColor[captionStyle] : '#ffffff' }}>
+                            {applyLetterCase(word, textCase)}
+                          </span>
+                        </React.Fragment>
+                      ))}
                     </span>
                   </div>
                 )}
@@ -3858,11 +3745,15 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
                   <button
                     type="button"
-                    className="player-ctrl-btn"
+                    className="player-ctrl-btn player-restart-btn"
                     onClick={handleRestart}
                     title={t.studio.restart}
+                    aria-label={t.studio.restart}
                   >
-                    ↺
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M3 2v6h6" />
+                      <path d="M3.6 8A9 9 0 1 1 5.2 17" />
+                    </svg>
                   </button>
 
                   <button
@@ -3912,6 +3803,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   <div className="history-hw-select-wrapper">
                     <select
                       className="history-hw-select"
+                      aria-label={t.studio.specHardware}
                       value={hardwareAccel}
                       onChange={(e) => setHardwareAccel(e.target.value as HardwareAccelOption)}
                       title={t.studio.hwChangeHint}
@@ -3944,7 +3836,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                 </div>
                 {titlePosition !== 'none' && (
                   <div className="history-info-item">
-                    <span className="info-key">Title Font:</span>
+                    <span className="info-key">{t.studio.titleFontFamily}:</span>
                     <span className="info-val">{titleFont} ({titleFontSizePx}px)</span>
                   </div>
                 )}
@@ -4034,7 +3926,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
             {/* Batch Render Queue Card - Fancy glowing when generating */}
             {batchProgress && (
-              <div className={`studio-batch-queue-card ${batchProgress.overall_status === 'running' ? 'is-processing' : ''}`}>
+              <div id="studio-batch-queue" className={`studio-batch-queue-card is-${batchProgress.overall_status}`}>
                 <div className="batch-progress-header">
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -4051,7 +3943,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                             ? t.studio.someClipsFailed(batchProgress.clips.filter(c => c.status === 'error').length, batchProgress.total_clips)
                             : t.studio.allClipsRendered(batchProgress.total_clips))
                         : batchProgress.overall_status === 'error'
-                        ? (batchProgress.error_message || t.studio.allClipsFailed)
+                        ? (language === 'id' ? t.studio.allClipsFailed : (batchProgress.error_message || t.studio.allClipsFailed))
                         : t.studio.processingClip((batchProgress.current_clip_index || 0) + 1, batchProgress.total_clips)}
                     </p>
                   </div>
@@ -4076,7 +3968,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           boxShadow: '0 0 10px rgba(177, 177, 177, 0.35)',
                           transition: 'all 0.2s ease',
                         }}
-                        title="Retry all failed clips in this batch"
+                        title={t.studio.retryAllFailedTooltip}
                       >
                         {t.studio.retryAllFailedBtn
                           ? t.studio.retryAllFailedBtn(batchProgress.clips.filter(c => c.status === 'error').length)
@@ -4114,6 +4006,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         type="button"
                         className="studio-close-btn"
                         onClick={onDismissProgress}
+                        aria-label={t.studio.dismissQueue}
                         style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', fontSize: '1rem', padding: '0.1rem 0.3rem' }}
                         title={t.studio.dismissQueue}
                       >
@@ -4141,7 +4034,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                       <span></span>
-                      <span>{batchProgress.error_message || t.studio.allClipsFailed}</span>
+                      <span title={batchProgress.error_message || t.studio.allClipsFailed}>
+                        {language === 'id' ? t.studio.allClipsFailed : (batchProgress.error_message || t.studio.allClipsFailed)}
+                      </span>
                     </div>
                     {onRetryClip && (
                       <button
@@ -4160,7 +4055,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                           flexShrink: 0
                         }}
                       >
-                        {t.studio.retryClipBtn || ' Retry'}
+                        {t.studio.retryClipBtn}
                       </button>
                     )}
                   </div>
@@ -4168,14 +4063,11 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
 
                 {/* Overall Progress Bar */}
                 <div className="batch-overall-bar-wrap">
-                  <div className="batch-overall-bar" style={{ height: '5px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div className="batch-overall-bar">
                     <div
                       className="batch-overall-fill"
                       style={{
                         height: '100%',
-                        background: batchProgress.overall_status === 'error'
-                          ? '#848484'
-                          : 'linear-gradient(90deg, #949494, #868686)',
                         width: `${Math.round((batchProgress.clips.filter(c => c.status === 'completed').length / (batchProgress.total_clips || 1)) * 100)}%`,
                         transition: 'width 0.3s ease'
                       }}
@@ -4238,24 +4130,18 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                         className={`batch-item-row status-${clip.status}`}
                         style={{
                           padding: '0.5rem 0.75rem',
-                          borderRadius: '8px',
-                          background: isError ? 'rgba(132, 132, 132, 0.05)' : 'rgba(255, 255, 255, 0.03)',
-                          border: isError ? '1px solid rgba(132, 132, 132, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.25rem',
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', maxWidth: '65%' }}>
-                            <span style={{ fontSize: '0.7rem', color: isError ? '#9b9b9b' : 'var(--text-muted)', fontWeight: 600 }}>#{idx + 1}</span>
-                            <span style={{ fontSize: '0.75rem', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clip.title}</span>
+                            <span style={{ fontSize: '0.7rem', color: isError ? '#737373' : '#5f6368', fontWeight: 600 }}>#{idx + 1}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#252525', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clip.title}</span>
                           </div>
                           <div>
-                            {clip.status === 'pending' && <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{t.studio.statusWaitingShort}</span>}
-                            {clip.status === 'downloading' && <span style={{ fontSize: '0.68rem', color: '#b1b1b1' }}>{t.studio.statusSlicingShort}</span>}
-                            {clip.status === 'transcribing' && <span style={{ fontSize: '0.68rem', color: '#7b7b7b' }}>{t.studio.statusCaptionsShort}</span>}
-                            {clip.status === 'rendering' && <span style={{ fontSize: '0.68rem', color: '#858585' }}>{t.studio.statusRenderingShort}</span>}
+                            {clip.status === 'pending' && <span style={{ fontSize: '0.68rem', color: '#62666d' }}>{t.studio.statusWaitingShort}</span>}
+                            {clip.status === 'downloading' && <span style={{ fontSize: '0.68rem', color: '#4b5563' }}>{t.studio.statusSlicingShort}</span>}
+                            {clip.status === 'transcribing' && <span style={{ fontSize: '0.68rem', color: '#4b5563' }}>{t.studio.statusCaptionsShort}</span>}
+                            {clip.status === 'rendering' && <span style={{ fontSize: '0.68rem', color: '#4b5563' }}>{t.studio.statusRenderingShort}</span>}
                             {clip.status === 'completed' && (
                               clip.download_url ? (
                                 <a
@@ -4302,9 +4188,9 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
                                       cursor: 'pointer',
                                       transition: 'all 0.2s ease',
                                     }}
-                                    title="Retry rendering this clip"
+                                    title={t.studio.retryClipTooltip}
                                   >
-                                    {t.studio.retryClipBtn || ' Retry'}
+                                    {t.studio.retryClipBtn}
                                   </button>
                                 )}
                               </div>
@@ -4330,6 +4216,78 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
         </div>
       </div>
 
+      <div
+        className={`studio-batch-live-status${batchProgress ? ` is-${batchProgress.overall_status}` : ' is-empty'}`}
+        role={batchProgress ? 'status' : undefined}
+        aria-live={batchProgress ? 'polite' : undefined}
+        aria-hidden={!batchProgress}
+      >
+        {batchProgress && (() => {
+          const completedCount = batchProgress.clips.filter(clip => clip.status === 'completed').length;
+          const failedCount = batchProgress.clips.filter(clip => clip.status === 'error').length;
+          const total = Math.max(1, batchProgress.total_clips);
+          const activeClip = batchProgress.clips[batchProgress.current_clip_index];
+          const activeProgress = activeClip && ['downloading', 'transcribing', 'rendering'].includes(activeClip.status)
+            ? Math.max(0, Math.min(100, activeClip.progress_percent || 0))
+            : 0;
+          const progressPercent = batchProgress.overall_status === 'completed'
+            ? 100
+            : Math.round(((completedCount + activeProgress / 100) / total) * 100);
+          const statusText = batchProgress.overall_status === 'completed'
+            ? (failedCount > 0
+                ? t.studio.someClipsFailed(failedCount, batchProgress.total_clips)
+                : t.studio.allClipsRendered(batchProgress.total_clips))
+            : batchProgress.overall_status === 'error'
+              ? (language === 'id' ? t.studio.allClipsFailed : (batchProgress.error_message || t.studio.allClipsFailed))
+              : t.studio.processingClip(
+                  Math.min(batchProgress.current_clip_index + 1, batchProgress.total_clips),
+                  batchProgress.total_clips
+                );
+
+          return (
+            <>
+              <div className="studio-batch-live-copy">
+                <strong>{statusText}</strong>
+                <span>{t.batchProgress.completedMeta(completedCount, batchProgress.total_clips)}</span>
+                <div
+                  className="studio-batch-live-track"
+                  role="progressbar"
+                  aria-label={t.studio.batchQueueTitle}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progressPercent}
+                >
+                  <span style={{ width: `${progressPercent}%` }} />
+                </div>
+              </div>
+              <div className="studio-batch-live-actions">
+                <button
+                  type="button"
+                  className="studio-batch-secondary-action"
+                  onClick={() => document.getElementById('studio-batch-queue')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                >
+                  {t.studio.viewRenderDetails}
+                </button>
+                {failedCount > 0 && batchProgress.overall_status !== 'running' && onRetryClip && (
+                  <button type="button" className="studio-batch-secondary-action" onClick={() => onRetryClip()}>
+                    {t.studio.retryAllFailedBtn(failedCount)}
+                  </button>
+                )}
+                {batchProgress.overall_status === 'completed' && completedCount > 0 && (
+                  <a
+                    className="studio-batch-download-action"
+                    href={batchProgress.zip_url || `/api/download-batch-zip/${batchProgress.batch_id}`}
+                    download={`eclipse_${batchProgress.batch_id}.zip`}
+                  >
+                    {t.batchProgress.downloadZip}
+                  </a>
+                )}
+              </div>
+            </>
+          );
+        })()}
+      </div>
+
       {/* Bottom Sticky Action Footer */}
       <div className="studio-bottom-action-bar">
         <div className="action-bar-meta">
@@ -4343,17 +4301,6 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
               title={t.studio.clearTempTooltip}
               onClick={handleClearTempClick}
               disabled={isClearingTemp}
-              style={{
-                background: 'rgba(255, 255, 255, 0.07)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                color: 'var(--text-secondary)',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                padding: '0.2rem 0.55rem',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
             >
               {isClearingTemp ? t.studio.clearingTempBtn : t.studio.clearTempBtn}
             </button>

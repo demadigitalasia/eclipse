@@ -5,6 +5,7 @@ import { ClipStudioSection } from './components/ClipStudioSection';
 import { CookiesModal } from './components/CookiesModal';
 import { ClipTrimmerModal } from './components/ClipTrimmerModal';
 import { AppUpdateModal } from './components/AppUpdateModal';
+import { UserGuideModal } from './components/UserGuideModal';
 import { resilientFetch } from './utils/api';
 import { useLanguage } from './locales';
 import type { AnalyzeResponse, ViralClip, RenderSettings, BatchRenderProgress } from './types';
@@ -18,7 +19,7 @@ declare global {
 }
 
 export default function App() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [url, setUrl] = useState('');
   const [gdriveUrl, setGdriveUrl] = useState('');
   const [sourceMode, setSourceMode] = useState<'youtube' | 'gdrive' | 'upload'>('youtube');
@@ -44,6 +45,7 @@ export default function App() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('cheat_clip_gemini_api_key') || '');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isCookiesModalOpen, setIsCookiesModalOpen] = useState(false);
+  const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [hasCookies, setHasCookies] = useState(false);
   const [isDownloadingRaw, setIsDownloadingRaw] = useState(false);
@@ -64,6 +66,7 @@ export default function App() {
     error?: string;
   }>>({});
   const [trimmerClip, setTrimmerClip] = useState<ViralClip | null>(null);
+  const [isStudioWorkspaceOpen, setIsStudioWorkspaceOpen] = useState(false);
 
   // AI model selection and custom focus prompt states
   const [selectedModel, setSelectedModel] = useState<string>(() => {
@@ -132,6 +135,22 @@ export default function App() {
   const [activeProcessingModel, setActiveProcessingModel] = useState<string>('');
   const [loadingElapsedTime, setLoadingElapsedTime] = useState<number>(0);
 
+  useEffect(() => {
+    if (!isStudioWorkspaceOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsStudioWorkspaceOpen(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isStudioWorkspaceOpen]);
+
   // Active timer during loading so the user always sees live activity
   useEffect(() => {
     let interval: number | null = null;
@@ -183,6 +202,7 @@ export default function App() {
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [activeClip, setActiveClip] = useState<ViralClip | null>(null);
   const [expandedClipIndex, setExpandedClipIndex] = useState<number | null>(null);
+  const [selectedClipDetailKey, setSelectedClipDetailKey] = useState<string | null>(null);
 
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const [leftPanelHeight, setLeftPanelHeight] = useState<number | null>(null);
@@ -270,6 +290,20 @@ export default function App() {
     return result.clips.filter(c => !!markedClips[`${c.start_time}_${c.end_time}`]);
   }, [result?.clips, markedClips]);
 
+  const currentResultVideoUrl = result
+    ? result.video_url || (
+        result.source_type === 'upload' || result.source_type === 'gdrive' ||
+        result.video_id?.startsWith('upload_') || result.video_id?.startsWith('gdrive_')
+          ? `/api/video/${encodeURIComponent(result.video_id)}`
+          : `https://www.youtube.com/watch?v=${encodeURIComponent(result.video_id)}`
+      )
+    : '';
+  const canAnalyzeCurrentSource = sourceMode === 'upload'
+    ? Boolean(uploadedVideoFile || uploadedVideoInfo)
+    : sourceMode === 'gdrive'
+      ? Boolean(gdriveUrl.trim())
+      : Boolean(url.trim());
+
   const handleStartBatchRender = async (settings: RenderSettings) => {
     if (!result) return;
     setIsLaunchingRender(true);
@@ -278,7 +312,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          video_url: url || `https://www.youtube.com/watch?v=${result.video_id}`,
+          video_url: currentResultVideoUrl,
           video_id: result.video_id,
           clips: settings.selectedClips,
           settings: {
@@ -297,7 +331,7 @@ export default function App() {
             subtitles_enabled: settings.captionStyle !== 'none',
             caption_style: settings.captionStyle,
             caption_font: settings.captionFont,
-            title_font: settings.titleFont || settings.captionFont || 'Outfit',
+            title_font: settings.titleFont || settings.captionFont || 'Montserrat',
             font_size: settings.fontSize,
             title_font_size: settings.titleFontSize || settings.fontSize || 'medium',
             font_size_px: settings.fontSizePx,
@@ -366,7 +400,7 @@ export default function App() {
       // Listen to SSE progress
       listenToBatchProgress(batchId);
     } catch (err: any) {
-      alert(err.message || 'Error launching batch render');
+      alert(language === 'id' ? t.errors.batchRenderStartFailed : (err.message || t.errors.batchRenderStartFailed));
     } finally {
       setIsLaunchingRender(false);
     }
@@ -409,7 +443,7 @@ export default function App() {
       // Reconnect SSE to track retry progress
       listenToBatchProgress(batchId);
     } catch (err: any) {
-      alert(err.message || 'Error retrying clip rendering');
+      alert(language === 'id' ? t.errors.batchRetryFailed : (err.message || t.errors.batchRetryFailed));
     }
   };
 
@@ -605,7 +639,13 @@ export default function App() {
   // Clear expanded clip index when filters or sorting change
   useEffect(() => {
     setExpandedClipIndex(null);
+    setSelectedClipDetailKey(null);
   }, [sortBy, viralityFilter, searchQuery]);
+
+  useEffect(() => {
+    setSelectedClipDetailKey(null);
+    setExpandedClipIndex(null);
+  }, [result?.video_id]);
 
   const toggleMarkedClip = (clipId: string) => {
     if (!result?.video_id) return;
@@ -1090,7 +1130,7 @@ export default function App() {
     } else if (sourceMode === 'gdrive') {
       if (!gdriveUrl.trim()) return;
       if (!isGoogleDriveUrl(gdriveUrl)) {
-        setError('Please enter a valid Google Drive video sharing link (e.g. https://drive.google.com/file/d/...)');
+        setError(t.errors.googleDriveUrlInvalid);
         return;
       }
     } else {
@@ -1100,6 +1140,11 @@ export default function App() {
     // Require an API key before making any request
     if (!apiKey.trim()) {
       setError(t.errors.apiKeyRequired);
+      requestAnimationFrame(() => {
+        const apiKeyInput = document.getElementById('gemini-key-input') as HTMLInputElement | null;
+        apiKeyInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        apiKeyInput?.focus();
+      });
       return;
     }
 
@@ -1156,8 +1201,8 @@ export default function App() {
       if (!currentVideoInfo && uploadedVideoFile) {
         setIsUploadingVideo(true);
         setLoadingDetails(t.form.uploadingVideo);
-        setAiStage('Uploading Local Video');
-        setAiDetail(`Uploading ${uploadedVideoFile.name} (${(uploadedVideoFile.size / (1024 * 1024)).toFixed(1)} MB)...`);
+        setAiStage(t.form.uploadingVideo);
+        setAiDetail(t.loading.uploadingFile(uploadedVideoFile.name, (uploadedVideoFile.size / (1024 * 1024)).toFixed(1)));
 
         try {
           const formData = new FormData();
@@ -1168,7 +1213,7 @@ export default function App() {
           });
           if (!upRes.ok) {
             const errJson = await upRes.json().catch(() => ({}));
-            throw new Error(errJson.detail || 'Failed to upload video file');
+            throw new Error(errJson.detail || t.errors.uploadVideoFailed);
           }
           const upData = await upRes.json();
           currentVideoInfo = {
@@ -1186,7 +1231,7 @@ export default function App() {
         } catch (uploadErr: any) {
           setIsUploadingVideo(false);
           setLoading(false);
-          setError(uploadErr.message || 'Failed to upload video file');
+          setError(language === 'id' ? t.errors.uploadVideoFailed : (uploadErr.message || t.errors.uploadVideoFailed));
           return;
         }
       }
@@ -1216,25 +1261,25 @@ export default function App() {
           setCurrentStep(1);
           setStepProgress({ 1: 100, 2: 0, 3: 0, 4: 0 });
           setOverallProgress(25);
-          setLoadingDetails('Checking cache... Found matching clip analysis in memory!');
+          setLoadingDetails(t.loading.cachedStep1);
 
           await new Promise(r => setTimeout(r, 300));
           setCurrentStep(2);
           setStepProgress({ 1: 100, 2: 100, 3: 0, 4: 0 });
           setOverallProgress(50);
-          setLoadingDetails('Loading cached audience interest heatmap points...');
+          setLoadingDetails(t.loading.cachedStep2);
           await new Promise(r => setTimeout(r, 300));
           setCurrentStep(3);
           setStepProgress({ 1: 100, 2: 100, 3: 100, 4: 0 });
           setOverallProgress(75);
-          setLoadingDetails(subtitlesSource === 'manual' ? 'Loading manual subtitles and transcript...' : 'Loading native subtitles and transcript...');
+          setLoadingDetails(t.loading.cachedStep3);
           await new Promise(r => setTimeout(r, 300));
           setCurrentStep(4);
           setStepProgress({ 1: 100, 2: 100, 3: 100, 4: 100 });
           setOverallProgress(100);
-          setAiStage('Restoring Cached Highlights');
-          setAiDetail('Reconstructing engagement timestamps, viral hooks, and social metadata from memory...');
-          setLoadingDetails('Reconstructing viral hotspots...');
+          setAiStage(t.loading.step4Label);
+          setAiDetail(t.loading.cachedStep4);
+          setLoadingDetails(t.loading.cachedStep4);
           await new Promise(r => setTimeout(r, 250));
 
           setResult(parsedData);
@@ -1262,11 +1307,10 @@ export default function App() {
     setCurrentStep(1);
     setStepProgress({ 1: 20, 2: 0, 3: 0, 4: 0 });
     setOverallProgress(5);
-    const isGDrive = isGoogleDriveUrl(targetAnalyzeUrl);
-    setAiStage(isGDrive ? 'Connecting to Google Drive' : 'Initializing Analysis Pipeline');
-    setAiDetail(sourceMode === 'upload' ? 'Inspecting local video container & audio track...' : isGDrive ? 'Connecting to Google Drive and resolving video...' : 'Connecting to YouTube and resolving media stream metadata...');
+    setAiStage(t.loading.step1Label);
+    setAiDetail(t.loading.step1Subtext);
     setActiveProcessingModel(selectedModel);
-    setLoadingDetails(sourceMode === 'upload' ? 'Inspecting local video file...' : isGDrive ? 'Connecting to Google Drive...' : 'Connecting to YouTube...');
+    setLoadingDetails(t.loading.step1Subtext);
 
     let resultData: AnalyzeResponse | null = null;
 
@@ -1288,7 +1332,7 @@ export default function App() {
         }),
       });
 
-      if (!response.body) throw new Error('No response stream from server.');
+      if (!response.body) throw new Error(t.errors.noResponseStream);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -1336,17 +1380,20 @@ export default function App() {
               if (event.overall_progress !== undefined) {
                 setOverallProgress(Number(event.overall_progress));
               }
-              if (event.stage) {
-                setAiStage(event.stage);
+              const progressStep = Math.min(4, Math.max(1, Number(event.step) || 1));
+              const localizedStages = [t.loading.step1Label, t.loading.step2Label, t.loading.step3Label, t.loading.step4Label];
+              const localizedDetails = [t.loading.step1Subtext, t.loading.step2Subtext, t.loading.step3Subtext, t.loading.step4Subtext];
+              if (event.stage || event.step !== undefined) {
+                setAiStage(language === 'id' ? localizedStages[progressStep - 1] : (event.stage || localizedStages[progressStep - 1]));
               }
-              if (event.detail) {
-                setAiDetail(event.detail);
+              if (event.detail || event.step !== undefined) {
+                setAiDetail(language === 'id' ? localizedDetails[progressStep - 1] : (event.detail || localizedDetails[progressStep - 1]));
               }
               if (event.model) {
                 setActiveProcessingModel(event.model);
               }
-              if (event.message) {
-                setLoadingDetails(event.message);
+              if (event.message || event.step !== undefined) {
+                setLoadingDetails(language === 'id' ? localizedDetails[progressStep - 1] : (event.message || localizedDetails[progressStep - 1]));
               }
             }
           }
@@ -1379,7 +1426,7 @@ export default function App() {
       }
 
       if (!resultData) {
-        throw new Error('Connection to the server was closed before analysis completed. On mobile devices, ensure your browser screen stays awake and network is stable, then try again.');
+        throw new Error(t.errors.analysisConnectionLost);
       }
 
       // Cache the successful response safely (handling mobile Safari quota limits)
@@ -1422,13 +1469,12 @@ export default function App() {
         msg.includes('server on port 8000') ||
         msg.includes('not running')
       ) {
-        setError(
-          ' Backend API Server is unreachable (Port 8000).\n' +
-          'Please ensure the full app is running in your terminal (`npm run dev`).\n' +
-          'If Python dependencies were not installed yet, run: `pip install -r requirements.txt`'
-        );
+        setError(t.errors.backendUnavailable);
       } else {
-        setError(msg || 'An unexpected error occurred during analysis.');
+        const knownLocalizedErrors = [t.errors.noResponseStream, t.errors.analysisConnectionLost];
+        setError(language === 'id' && msg && !knownLocalizedErrors.includes(msg)
+          ? t.errors.unexpectedAnalysisError
+          : (msg || t.errors.unexpectedAnalysisError));
       }
       setLoading(false);
     }
@@ -1483,7 +1529,7 @@ export default function App() {
 
   const handleDownloadRawVideo = async () => {
     if (!result || !result.video_id) return;
-    const targetUrl = result.video_url || (url.trim() ? url.trim() : (result.video_id?.startsWith('gdrive_') || result.video_id?.startsWith('upload_') ? `/api/video/${result.video_id}` : `https://www.youtube.com/watch?v=${result.video_id}`));
+    const targetUrl = currentResultVideoUrl;
     setIsDownloadingRaw(true);
     setRawDownloadProgress({
       jobId: '',
@@ -1678,7 +1724,7 @@ export default function App() {
         ...prev,
         [clipKey]: { status: 'error', error: err.message }
       }));
-      setError(err.message || "Failed to download clip");
+      setError(language === 'id' ? t.errors.clipDownloadFailed : (err.message || t.errors.clipDownloadFailed));
     }
   };
 
@@ -1780,7 +1826,7 @@ Transcript:
     setCopyTimestampMenuTarget(prev => prev === target ? null : target);
   };
 
-  const renderTimestampFormatMenu = (align: 'left' | 'right' = 'right') => {
+  const renderTimestampFormatMenu = (target: 'toolbar' | 'overview', align: 'left' | 'right' = 'right') => {
     const totalCount = result?.clips?.length || 0;
     const markedCount = (result?.clips || []).filter(
       clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]
@@ -1789,7 +1835,10 @@ Transcript:
 
     return (
       <div
+        id={`timestamp-format-menu-${target}`}
         className="timestamp-dropdown-menu"
+        role="dialog"
+        aria-label={t.results.timestampMenuAccessibleName}
         onClick={(e) => e.stopPropagation()}
         style={{ [align]: 0 }}
       >
@@ -1840,7 +1889,7 @@ Transcript:
           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             {t.results.copyFormatOnlyTimestamps}
           </span>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'Inter' }}>
             {t.results.copyFormatOnlyTimestampsDesc}
           </span>
         </button>
@@ -1855,7 +1904,7 @@ Transcript:
           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             {t.results.copyFormatWithTitles}
           </span>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'Inter' }}>
             {t.results.copyFormatWithTitlesDesc}
           </span>
         </button>
@@ -1872,13 +1921,32 @@ Transcript:
           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             {t.results.copyFormatYoutube}
           </span>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'Inter' }}>
             {t.results.copyFormatYoutubeDesc}
           </span>
         </button>
       </div>
     );
   };
+
+  const sortModelVersions = (models: string[]) => [...models].sort((a, b) => {
+    if (a === b) return 0;
+    if (a === 'gemini-2.5-flash') return -1;
+    if (b === 'gemini-2.5-flash') return 1;
+    const versionOf = (model: string) => model.match(/^gemini-(\d+(?:\.\d+)?)/i)?.[1];
+    const aVersion = versionOf(a);
+    const bVersion = versionOf(b);
+    if (aVersion && bVersion) return Number(bVersion) - Number(aVersion);
+    if (aVersion) return -1;
+    if (bVersion) return 1;
+    return a.localeCompare(b);
+  });
+
+  const modelGroups = [
+    { label: t.results.modelFlashGroup, models: sortModelVersions(availableModels.filter(model => model.toLowerCase().includes('flash'))) },
+    { label: t.results.modelProGroup, models: sortModelVersions(availableModels.filter(model => model.toLowerCase().includes('pro'))) },
+    { label: t.results.modelOtherGroup, models: availableModels.filter(model => !model.toLowerCase().includes('flash') && !model.toLowerCase().includes('pro')) },
+  ].filter(group => group.models.length > 0);
 
   const handleExportJSON = () => {
     if (!result) return;
@@ -2040,7 +2108,7 @@ Transcript:
   );
 
   return (
-    <div className="app-container">
+    <div className={`app-container${isStudioWorkspaceOpen ? ' studio-workspace-open' : ''}`}>
       {/* Toast Notification */}
       {toastMessage && (
         <div className="toast-msg" role="status" aria-live="polite">
@@ -2052,8 +2120,8 @@ Transcript:
             type="button"
             className="toast-close-btn"
             onClick={() => setToastMessage(null)}
-            title="Dismiss notification"
-            aria-label="Dismiss notification"
+            title={t.errors.dismissNotification}
+            aria-label={t.errors.dismissNotification}
           >
 
           </button>
@@ -2068,6 +2136,15 @@ Transcript:
           </h1>
         </div>
         <div className="header-nav" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <button
+            type="button"
+            className="user-guide-open-btn"
+            onClick={() => setIsUserGuideOpen(true)}
+            aria-haspopup="dialog"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.75 5.5A2.75 2.75 0 0 1 7.5 2.75h11.75v17H7.5a2.75 2.75 0 0 0-2.75 2.75zm0 0v17M8 6h7m-7 4h7m-7 4h5" /></svg>
+            <span>{t.guide.buttonLabel}</span>
+          </button>
           <button
             type="button"
             className="cookie-header-btn"
@@ -2121,7 +2198,7 @@ Transcript:
       </header>
 
       {/* Main Form controls panel */}
-      <section className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <section className="glass-panel analysis-setup-panel">
         <div className="dema-intro">
           <div className="dema-intro-copy">
             <span className="dema-eyebrow"><span className="dema-eyebrow-rule" />{t.header.heroEyebrow}</span>
@@ -2132,35 +2209,21 @@ Transcript:
             <img className="dema-eclipse-art" src="/eclipse-hero-art.png" alt="" />
           </div>
         </div>
-        <form onSubmit={handleAnalyze} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <form onSubmit={handleAnalyze} className="analysis-setup-form">
           {/* Source Selector Tabs: YouTube vs Google Drive vs Upload Video File */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+          <div className="source-tabs" role="group" aria-label={t.form.sourceSelectionLabel}>
             {/* YouTube Tab */}
             <button
               type="button"
               id="source-mode-youtube"
               className={`source-tab-btn ${sourceMode === 'youtube' ? 'active' : ''}`}
+              aria-pressed={sourceMode === 'youtube'}
               onClick={() => {
                 setSourceMode('youtube');
                 setError(null);
               }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.55rem 1.1rem',
-                borderRadius: '10px',
-                border: sourceMode === 'youtube' ? '1px solid rgba(132, 132, 132, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
-                background: sourceMode === 'youtube' ? 'linear-gradient(135deg, rgba(132, 132, 132, 0.2) 0%, rgba(114, 114, 114, 0.08) 100%)' : 'rgba(255, 255, 255, 0.03)',
-                color: sourceMode === 'youtube' ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                transition: 'all 0.2s ease',
-                boxShadow: sourceMode === 'youtube' ? '0 0 15px rgba(132, 132, 132, 0.2)' : 'none'
-              }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#848484' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF0033" aria-hidden="true" focusable="false">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
               </svg>
               {t.form.tabYoutube}
@@ -2171,33 +2234,19 @@ Transcript:
               type="button"
               id="source-mode-gdrive"
               className={`source-tab-btn ${sourceMode === 'gdrive' ? 'active' : ''}`}
+              aria-pressed={sourceMode === 'gdrive'}
               onClick={() => {
                 setSourceMode('gdrive');
                 setError(null);
               }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.55rem 1.1rem',
-                borderRadius: '10px',
-                border: sourceMode === 'gdrive' ? '1px solid rgba(163, 163, 163, 0.45)' : '1px solid rgba(255, 255, 255, 0.08)',
-                background: sourceMode === 'gdrive' ? 'linear-gradient(135deg, rgba(163, 163, 163, 0.2) 0%, rgba(131, 131, 131, 0.08) 100%)' : 'rgba(255, 255, 255, 0.03)',
-                color: sourceMode === 'gdrive' ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                transition: 'all 0.2s ease',
-                boxShadow: sourceMode === 'gdrive' ? '0 0 15px rgba(163, 163, 163, 0.2)' : 'none'
-              }}
             >
               <svg width="17" height="17" viewBox="0 0 87.3 78" fill="none">
-                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#6b6b6b"/>
-                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#959595"/>
-                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.1z" fill="#808080"/>
-                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#717171"/>
-                <path d="m59.8 53h27.5c0-1.55-.4-3.1-1.2-4.5l-25.4-44c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8z" fill="#c6c6c6"/>
-                <path d="m73.55 76.8c1.35 0 2.9-.4 4.25-1.2l-14.1-22.6H27.5l13.75 23.8h32.3z" fill="#868686"/>
+                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#00832D"/>
+                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00AC47"/>
+                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.1z" fill="#0066DA"/>
+                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#FFBA00"/>
+                <path d="m59.8 53h27.5c0-1.55-.4-3.1-1.2-4.5l-25.4-44c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8z" fill="#2684FC"/>
+                <path d="m73.55 76.8c1.35 0 2.9-.4 4.25-1.2l-14.1-22.6H27.5l13.75 23.8h32.3z" fill="#FFBA00"/>
               </svg>
               {t.form.tabGdrive}
             </button>
@@ -2207,26 +2256,17 @@ Transcript:
               type="button"
               id="source-mode-upload"
               className={`source-tab-btn ${sourceMode === 'upload' ? 'active' : ''}`}
+              aria-pressed={sourceMode === 'upload'}
               onClick={() => {
                 setSourceMode('upload');
                 setError(null);
               }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.55rem 1.1rem',
-                borderRadius: '10px',
-                border: sourceMode === 'upload' ? '1px solid rgba(133, 133, 133, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
-                background: sourceMode === 'upload' ? 'linear-gradient(135deg, rgba(133, 133, 133, 0.2) 0%, rgba(109, 109, 109, 0.08) 100%)' : 'rgba(255, 255, 255, 0.03)',
-                color: sourceMode === 'upload' ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                transition: 'all 0.2s ease',
-                boxShadow: sourceMode === 'upload' ? '0 0 15px rgba(133, 133, 133, 0.2)' : 'none'
-              }}
             >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                <path d="M12 15V3" />
+                <path d="m7 8 5-5 5 5" />
+                <path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+              </svg>
               {t.form.tabUpload}
             </button>
           </div>
@@ -2235,11 +2275,11 @@ Transcript:
           {sourceMode === 'youtube' && (
             <div className="form-main-input-row">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t.form.urlLabel}</label>
+                <label htmlFor="youtube-url-input" className="setup-field-label">{t.form.urlLabel}</label>
                 <input
                   id="youtube-url-input"
                   type="text"
-                  className="form-input"
+                  className="form-input source-url-input setup-control"
                   placeholder={t.form.urlPlaceholder}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
@@ -2247,26 +2287,6 @@ Transcript:
                   required={sourceMode === 'youtube'}
                 />
               </div>
-              <button
-                id="analyze-btn"
-                type="submit"
-                className="glowing-btn"
-                disabled={loading || !url.trim()}
-                style={{ height: '48px', padding: '0 2.5rem' }}
-              >
-                {loading ? (
-                  <>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="spinner-icon" style={{ animation: 'spin 1s linear infinite' }}>
-                      <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8"></circle>
-                    </svg>
-                    {t.form.processing}
-                  </>
-                ) : (
-                  <>
-                    {t.form.hackClips}
-                  </>
-                )}
-              </button>
             </div>
           )}
 
@@ -2274,41 +2294,21 @@ Transcript:
           {sourceMode === 'gdrive' && (
             <div className="form-main-input-row">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t.form.gdriveUrlLabel}</label>
+                <label htmlFor="gdrive-url-input" className="setup-field-label">{t.form.gdriveUrlLabel}</label>
                 <input
                   id="gdrive-url-input"
                   type="text"
-                  className="form-input"
+                  className="form-input source-url-input setup-control"
                   placeholder={t.form.gdriveUrlPlaceholder}
                   value={gdriveUrl}
                   onChange={(e) => setGdriveUrl(e.target.value)}
                   disabled={loading}
                   required={sourceMode === 'gdrive'}
                 />
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                <span className="setup-helper-text">
                    {t.form.gdriveNotice}
                 </span>
               </div>
-              <button
-                id="analyze-gdrive-btn"
-                type="submit"
-                className="glowing-btn"
-                disabled={loading || !gdriveUrl.trim()}
-                style={{ height: '48px', padding: '0 2.5rem' }}
-              >
-                {loading ? (
-                  <>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="spinner-icon" style={{ animation: 'spin 1s linear infinite' }}>
-                      <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8"></circle>
-                    </svg>
-                    {t.form.processing}
-                  </>
-                ) : (
-                  <>
-                    {t.form.hackClips}
-                  </>
-                )}
-              </button>
             </div>
           )}
 
@@ -2318,7 +2318,7 @@ Transcript:
               <input
                 type="file"
                 ref={videoFileInputRef}
-                accept="video/*,.mp4,.mov,.mkv,.webm,.avi,.m4v"
+                accept=".mp4,.mov,.mkv,.webm,.avi,.m4v,.flv,.wmv"
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -2332,6 +2332,9 @@ Transcript:
 
               {!uploadedVideoFile && !uploadedVideoInfo ? (
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t.form.dropVideoTitle}
                   onDragOver={(e) => {
                     e.preventDefault();
                     setIsDragOverVideo(true);
@@ -2348,6 +2351,12 @@ Transcript:
                     }
                   }}
                   onClick={() => videoFileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      videoFileInputRef.current?.click();
+                    }
+                  }}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -2385,8 +2394,7 @@ Transcript:
                       {t.form.dropVideoSubtitle}
                     </div>
                   </div>
-                  <button
-                    type="button"
+                  <span
                     className="action-link-btn"
                     style={{
                       marginTop: '0.25rem',
@@ -2396,11 +2404,14 @@ Transcript:
                       border: '1px solid rgba(133, 133, 133, 0.4)',
                       color: '#c1c1c1',
                       fontSize: '0.82rem',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                   >
                     {t.form.chooseVideoFile}
-                  </button>
+                  </span>
                 </div>
               ) : (
                 <div style={{
@@ -2477,79 +2488,53 @@ Transcript:
                     >
                       {t.form.changeVideo}
                     </button>
-                    <button
-                      id="analyze-uploaded-btn"
-                      type="submit"
-                      className="glowing-btn"
-                      disabled={loading || isUploadingVideo}
-                      style={{ height: '42px', padding: '0 2rem' }}
-                    >
-                      {isUploadingVideo ? (
-                        <>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="spinner-icon" style={{ animation: 'spin 1s linear infinite' }}>
-                            <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8"></circle>
-                          </svg>
-                          {t.form.uploadingVideo}
-                        </>
-                      ) : loading ? (
-                        <>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="spinner-icon" style={{ animation: 'spin 1s linear infinite' }}>
-                            <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8"></circle>
-                          </svg>
-                          {t.form.processing}
-                        </>
-                      ) : (
-                        <>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                          </svg>
-                          {t.form.hackClips}
-                        </>
-                      )}
-                    </button>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          <div className="form-settings-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          <div className="form-settings-grid setup-settings-grid">
             {/* Card 1: AI Engine Configuration */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-              <h3 style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
+            <div className="setup-settings-card">
+              <h3 className="setup-settings-title">
                  {t.form.aiSettingsTitle}
               </h3>
 
               {/* API Key input — required */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  <span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <label htmlFor="gemini-key-input" className="setup-field-label">
                     {t.form.apiKeyLabel}
-                    <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', fontWeight: 700, color: '#9b9b9b', background: 'rgba(132, 132, 132, 0.12)', border: '1px solid rgba(132, 132, 132, 0.3)', borderRadius: '4px', padding: '0.1rem 0.35rem', letterSpacing: '0.04em' }}>{t.form.apiKeyRequired}</span>
-                  </span>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span className="setup-required-badge">{t.form.apiKeyRequired}</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <a
                       href="https://aistudio.google.com/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600, transition: 'var(--transition-smooth)' }}
+                      style={{ textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600, transition: 'var(--transition-smooth)' }}
                       className="action-link-btn"
                     >
                        {t.form.getFreeKey}
                     </a>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.15)', fontSize: '0.75rem' }}>|</span>
-                    <span
+                    <span className="setup-action-separator">|</span>
+                    <button
+                      type="button"
+                      aria-controls="gemini-key-input"
+                      aria-pressed={showApiKey}
                       onClick={() => setShowApiKey(!showApiKey)}
-                      style={{ cursor: 'pointer', color: 'var(--primary)', fontSize: '0.75rem' }}
+                      className="setup-text-action"
                     >
                       {showApiKey ? t.form.hideKey : t.form.showKey}
-                    </span>
+                    </button>
                   </div>
-                </label>
+                </div>
                 <input
                   id="gemini-key-input"
                   type={showApiKey ? 'text' : 'password'}
-                  className={`form-input${!apiKey.trim() ? ' input-error-highlight' : ''}`}
+                  aria-required="true"
+                  className={`form-input setup-control${!apiKey.trim() ? ' input-error-highlight' : ''}`}
                   placeholder={t.form.apiKeyPlaceholder}
                   value={apiKey}
                   onChange={(e) => {
@@ -2559,10 +2544,9 @@ Transcript:
                     if (val.trim()) setError(null);
                   }}
                   disabled={loading}
-                  style={{ height: '42px' }}
                 />
                 {!apiKey.trim() && (
-                  <span style={{ fontSize: '0.75rem', color: '#9b9b9b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <span className="setup-error-hint">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     {t.form.apiKeyErrorHint}
                   </span>
@@ -2571,60 +2555,72 @@ Transcript:
 
               {/* AI Model Selection */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                <label htmlFor="gemini-model-input" className="setup-field-label setup-model-label">
                   <span>{t.form.aiModelLabel}</span>
                   {loadingModels && (
-                    <span style={{ fontSize: '0.72rem', color: 'var(--primary)', animation: 'pulse 1.5s infinite ease-in-out' }}>
+                    <span className="setup-loading-hint">
                        {t.form.fetchingModels}
                     </span>
                   )}
                 </label>
                 <select
-                  className="form-input"
+                  id="gemini-model-input"
+                  className="form-input setup-control setup-select"
                   value={selectedModel}
                   onChange={(e) => {
                     setSelectedModel(e.target.value);
                     localStorage.setItem('cheat_clip_selected_model', e.target.value);
                   }}
                   disabled={loading}
-                  style={{ padding: '0.6rem 1rem', fontSize: '0.875rem', height: '42px', cursor: 'pointer', appearance: 'auto', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
                 >
                   {availableModels.length > 0 ? (
-                    availableModels.map((m) => (
-                      <option key={m} value={m} style={{ background: '#141414', color: '#ffffff' }}>
-                        {m}
-                      </option>
+                    modelGroups.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.models.map((m) => (
+                          <option key={m} value={m}>
+                            {m}{m === 'gemini-2.5-flash' ? ` · ${t.results.recommendedOptionLabel}` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))
                   ) : (
                     <>
-                      <option value="gemini-2.5-flash" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.5-flash (Fast & recommended - Free tier friendly)</option>
-                      <option value="gemini-2.5-flash-lite" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.5-flash-lite (Ultra-fast & lightweight)</option>
-                      <option value="gemini-2.0-flash" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.0-flash (Fast & responsive)</option>
-                      <option value="gemini-2.0-flash-lite" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.0-flash-lite (Lightweight flash)</option>
-                      <option value="gemini-1.5-flash" style={{ background: '#141414', color: '#ffffff' }}>gemini-1.5-flash (Fallback flash)</option>
-                      <option value="gemini-2.5-pro" style={{ background: '#141414', color: '#ffffff' }}>gemini-2.5-pro (Creative & complex - High quota)</option>
+                      <optgroup label={t.results.modelFlashGroup}>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash · {t.results.recommendedOptionLabel}</option>
+                        <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                        <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                      </optgroup>
+                      <optgroup label={t.results.modelProGroup}>
+                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                      </optgroup>
                     </>
                   )}
                 </select>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4, marginTop: '0.2rem' }}>
+                <span className="setup-helper-text">
+                   {t.results.recommendedModelHelp}
+                </span>
+                <span className="setup-helper-text">
                    <strong>{t.form.resilienceTip}</strong> {t.form.resilienceDesc}
                 </span>
               </div>
             </div>
 
             {/* Card 2: Clip Parameters & Focus */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-              <h3 style={{ fontSize: '0.9rem', color: 'var(--secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
+            <div className="setup-settings-card">
+              <h3 className="setup-settings-title">
                  {t.form.clipCustomizationTitle}
               </h3>
 
               {/* Preferred Duration Selector */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t.form.targetDuration}</label>
-                <div className="duration-selector" id="duration-selector-group">
+                <span id="target-duration-label" className="setup-field-label">{t.form.targetDuration}</span>
+                <div className="duration-selector" id="duration-selector-group" role="group" aria-labelledby="target-duration-label">
                   <button
                     type="button"
                     className={`duration-btn ${durationPref === '15s' ? 'active' : ''}`}
+                    aria-pressed={durationPref === '15s'}
                     onClick={() => {
                       setDurationPref('15s');
                       localStorage.setItem('cheat_clip_duration_pref', '15s');
@@ -2636,6 +2632,7 @@ Transcript:
                   <button
                     type="button"
                     className={`duration-btn ${durationPref === '30s' ? 'active' : ''}`}
+                    aria-pressed={durationPref === '30s'}
                     onClick={() => {
                       setDurationPref('30s');
                       localStorage.setItem('cheat_clip_duration_pref', '30s');
@@ -2647,6 +2644,7 @@ Transcript:
                   <button
                     type="button"
                     className={`duration-btn ${durationPref === '60s' ? 'active' : ''}`}
+                    aria-pressed={durationPref === '60s'}
                     onClick={() => {
                       setDurationPref('60s');
                       localStorage.setItem('cheat_clip_duration_pref', '60s');
@@ -2658,6 +2656,7 @@ Transcript:
                   <button
                     type="button"
                     className={`duration-btn ${durationPref === 'auto' ? 'active' : ''}`}
+                    aria-pressed={durationPref === 'auto'}
                     onClick={() => {
                       setDurationPref('auto');
                       localStorage.setItem('cheat_clip_duration_pref', 'auto');
@@ -2668,7 +2667,7 @@ Transcript:
                   </button>
                 </div>
                 {durationPref === 'auto' && (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: '0.1rem' }}>
+                  <span className="setup-helper-text">
                      {t.form.durAutoTip}
                   </span>
                 )}
@@ -2676,44 +2675,37 @@ Transcript:
 
               {/* Focus Prompt Search Keyword */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  {t.form.findSpecificMoments} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>{t.form.optional}</span>
+                <label htmlFor="specific-moments-input" className="setup-field-label">
+                  {t.form.findSpecificMoments} <span className="setup-optional">{t.form.optional}</span>
                 </label>
                 <input
+                  id="specific-moments-input"
                   type="text"
-                  className="form-input"
+                  className="form-input setup-control"
                   placeholder={t.form.promptPlaceholder}
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
                   disabled={loading}
-                  style={{ height: '42px' }}
                 />
               </div>
 
               {/* Target Clip Count Selector & Slider */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  <span id="target-clip-count-label" className="setup-field-label">
                     {t.form.targetClipCount}
-                  </label>
-                  <span style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    color: 'var(--secondary)',
-                    background: 'rgba(148, 148, 148, 0.12)',
-                    border: '1px solid rgba(148, 148, 148, 0.3)',
-                    borderRadius: '6px',
-                    padding: '0.1rem 0.5rem'
-                  }}>
+                  </span>
+                  <span className="setup-count-badge">
                     {clipCountMode === 'auto' ? t.form.clipCountAutoBadge : t.form.approxClips(targetClipCount)}
                   </span>
                 </div>
 
                 {/* Auto vs Custom Count Option Buttons */}
-                <div className="duration-selector" id="clip-count-mode-group">
+                <div className="duration-selector" id="clip-count-mode-group" role="group" aria-labelledby="target-clip-count-label">
                   <button
                     type="button"
                     className={`duration-btn ${clipCountMode === 'auto' ? 'active' : ''}`}
+                    aria-pressed={clipCountMode === 'auto'}
                     onClick={() => {
                       setClipCountMode('auto');
                       localStorage.setItem('cheat_clip_clip_count_mode', 'auto');
@@ -2725,6 +2717,7 @@ Transcript:
                   <button
                     type="button"
                     className={`duration-btn ${clipCountMode === 'custom' ? 'active' : ''}`}
+                    aria-pressed={clipCountMode === 'custom'}
                     onClick={() => {
                       setClipCountMode('custom');
                       localStorage.setItem('cheat_clip_clip_count_mode', 'custom');
@@ -2740,6 +2733,7 @@ Transcript:
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: '10px' }}>1</span>
                       <input
+                        aria-label={`${t.form.targetClipCount}: ${targetClipCount}`}
                         type="range"
                         min="1"
                         max="50"
@@ -2750,24 +2744,16 @@ Transcript:
                           localStorage.setItem('cheat_clip_target_clip_count', String(val));
                         }}
                         disabled={loading}
-                        style={{
-                          flex: 1,
-                          height: '6px',
-                          borderRadius: '3px',
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          outline: 'none',
-                          cursor: 'pointer',
-                          accentColor: 'var(--secondary)'
-                        }}
+                        className="setup-range-slider"
                       />
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: '20px', textAlign: 'right' }}>50</span>
                     </div>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                    <span className="setup-helper-text">
                        {t.form.clipCountTip(targetClipCount, targetClipCount <= 5 ? `${Math.max(1, targetClipCount - 1)}-${targetClipCount + 2}` : targetClipCount <= 10 ? `${Math.max(1, targetClipCount - 2)}-${targetClipCount + 3}` : `${targetClipCount - 5}-${targetClipCount + 5}`)}
                     </span>
                   </>
                 ) : (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: '0.1rem' }}>
+                  <span className="setup-helper-text">
                      {t.form.clipCountAutoTip}
                   </span>
                 )}
@@ -2776,27 +2762,27 @@ Transcript:
           </div>
 
           {/* Subtitles Source Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t.form.subtitlesSource}</label>
-            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+          <div className="setup-option-section">
+            <span id="subtitles-source-label" className="setup-field-label">{t.form.subtitlesSource}</span>
+            <div className="setup-choice-group" role="group" aria-labelledby="subtitles-source-label">
+              <label className="setup-choice-label">
                 <input
                   type="radio"
                   name="subtitlesSource"
                   checked={subtitlesSource === 'youtube'}
                   onChange={() => setSubtitlesSource('youtube')}
-                  style={{ accentColor: 'var(--primary)' }}
+                  className="setup-radio"
                   disabled={loading}
                 />
                 {sourceMode === 'youtube' ? t.form.autoFetchYoutube : t.form.autoTranscript}
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+              <label className="setup-choice-label">
                 <input
                   type="radio"
                   name="subtitlesSource"
                   checked={subtitlesSource === 'manual'}
                   onChange={() => setSubtitlesSource('manual')}
-                  style={{ accentColor: 'var(--primary)' }}
+                  className="setup-radio"
                   disabled={loading}
                 />
                 {t.form.uploadCustomSubtitles}
@@ -2826,26 +2812,12 @@ Transcript:
                   />
                   <label
                     htmlFor="manual-subtitle-file"
-                    className="form-input"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      cursor: 'pointer',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '8px',
-                      fontSize: '0.85rem',
-                      width: 'auto',
-                      color: 'var(--text-primary)',
-                      transition: 'var(--transition-smooth)'
-                    }}
+                    className="setup-file-picker"
                   >
                     {t.form.chooseSrtTxt}
                   </label>
                   {manualSubtitlesFileName && (
-                    <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '500' }}>
+                  <span className="setup-selected-file-name">
                        {manualSubtitlesFileName}
                     </span>
                   )}
@@ -2854,34 +2826,34 @@ Transcript:
             </div>
 
             {subtitlesSource === 'youtube' && (
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8, display: 'block', marginTop: '0.15rem', lineHeight: '1.4' }}>
-                 <strong>{t.form.subtitlesTipTitle}</strong> {t.form.subtitlesTipDesc} <a href="https://downsub.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--secondary)', textDecoration: 'underline', fontWeight: '500' }}>downsub.com</a> {t.form.andUploadOption}
+              <span className="setup-helper-text setup-subtitle-tip">
+                 <strong>{t.form.subtitlesTipTitle}</strong> {t.form.subtitlesTipDesc} <a className="setup-help-link" href="https://downsub.com/" target="_blank" rel="noopener noreferrer">downsub.com</a> {t.form.andUploadOption}
               </span>
             )}
           </div>
 
           {/* Custom Search Range Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t.form.analysisRange}</label>
-            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+          <div className="setup-option-section">
+            <span id="analysis-range-label" className="setup-field-label">{t.form.analysisRange}</span>
+            <div className="setup-choice-group" role="group" aria-labelledby="analysis-range-label">
+              <label className="setup-choice-label">
                 <input
                   type="radio"
                   name="rangeType"
                   checked={rangeType === 'entire'}
                   onChange={() => setRangeType('entire')}
-                  style={{ accentColor: 'var(--primary)' }}
+                  className="setup-radio"
                   disabled={loading}
                 />
                 {t.form.entireVideo}
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+              <label className="setup-choice-label">
                 <input
                   type="radio"
                   name="rangeType"
                   checked={rangeType === 'custom'}
                   onChange={() => setRangeType('custom')}
-                  style={{ accentColor: 'var(--primary)' }}
+                  className="setup-radio"
                   disabled={loading}
                 />
                 {t.form.customRange}
@@ -2890,32 +2862,55 @@ Transcript:
               {rangeType === 'custom' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <input
+                    aria-label={t.form.startPlaceholder}
                     type="text"
-                    className="form-input"
+                    className="form-input setup-control setup-range-field"
                     placeholder={t.form.startPlaceholder}
                     value={customRangeStart}
                     onChange={(e) => setCustomRangeStart(e.target.value)}
-                    style={{ width: '150px', padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}
                     disabled={loading}
                   />
-                  <span style={{ color: 'var(--text-muted)' }}>{t.form.to}</span>
+                  <span className="setup-range-separator">{t.form.to}</span>
                   <input
+                    aria-label={t.form.endPlaceholder}
                     type="text"
-                    className="form-input"
+                    className="form-input setup-control setup-range-field"
                     placeholder={t.form.endPlaceholder}
                     value={customRangeEnd}
                     onChange={(e) => setCustomRangeEnd(e.target.value)}
-                    style={{ width: '150px', padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}
                     disabled={loading}
                   />
                 </div>
               )}
             </div>
             {rangeType === 'custom' && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <span className="setup-helper-text">
                 {t.form.rangeFormatHint}
               </span>
             )}
+          </div>
+
+          <div className="analysis-submit-footer">
+            <div className="analysis-submit-guidance" role="status" aria-live="polite">
+              {!apiKey.trim() ? t.errors.apiKeyRequired : t.form.analysisSubmitHint}
+            </div>
+            <button
+              id="analyze-btn"
+              type="submit"
+              className="glowing-btn analysis-submit-btn"
+              disabled={loading || isUploadingVideo || !canAnalyzeCurrentSource}
+            >
+              {loading ? (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="spinner-icon" style={{ animation: 'spin 1s linear infinite' }}>
+                    <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8"></circle>
+                  </svg>
+                  {isUploadingVideo ? t.form.uploadingVideo : t.form.processing}
+                </>
+              ) : (
+                t.form.hackClips
+              )}
+            </button>
           </div>
         </form>
       </section>
@@ -2924,147 +2919,75 @@ Transcript:
       {history.length > 0 && (
         <section
           className="history-highlight-panel"
-          aria-label="Previously analyzed clips"
+          aria-label={t.form.previouslyAnalyzed}
         >
           {/* Header Row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div
-              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}
-              onClick={() => setShowHistory(h => !h)}
-            >
-              <span style={{ fontSize: '1.5rem', filter: 'drop-shadow(0 0 8px rgba(128, 128, 128, 0.5))' }}></span>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {t.form.previouslyAnalyzed}
-                  </h3>
-                  <span style={{
-                    background: 'rgba(128, 128, 128, 0.2)',
-                    color: '#9f9f9f',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    padding: '0.15rem 0.65rem',
-                    borderRadius: '9999px',
-                    border: '1px solid rgba(128, 128, 128, 0.45)'
-                  }}>
-                    {history.length}
-                  </span>
-                </div>
-                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  {t.form.historySubtitle}
-                </p>
+          <div className="history-panel-header">
+            <div className="history-heading">
+              <div className="history-title-row">
+                <h3 className="history-panel-title">{t.form.previouslyAnalyzed}</h3>
+                <span className="history-count-badge">{history.length}</span>
               </div>
+              <p className="history-panel-subtitle">{t.form.historySubtitle}</p>
             </div>
 
             {/* Actions: Search bar, Clear All, Collapse Toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div className="history-panel-actions">
               {/* Search Bar */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <span style={{ position: 'absolute', left: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)', pointerEvents: 'none' }}>
-
-                </span>
+              <div className="history-search-wrap">
+                <svg className="history-search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="10.8" cy="10.8" r="6.3" />
+                  <path d="m16 16 4 4" />
+                </svg>
                 <input
                   type="text"
                   className="history-search-input"
+                  aria-label={t.form.searchHistoryPlaceholder}
                   placeholder={t.form.searchHistoryPlaceholder}
                   value={historySearchQuery}
                   onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  style={{ paddingRight: historySearchQuery ? '2rem' : '0.85rem' }}
                 />
                 {historySearchQuery && (
                   <button
                     type="button"
                     onClick={() => setHistorySearchQuery('')}
-                    style={{
-                      position: 'absolute',
-                      right: '0.6rem',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      padding: 0
-                    }}
-                    title={t.form.clearSearch}
+                    className="history-clear-search"
+                    aria-label={t.form.clearSearch}
                   >
-
+                    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                      <path d="m5 5 10 10M15 5 5 15" />
+                    </svg>
                   </button>
                 )}
               </div>
 
               {/* Clear all with confirmation */}
               {confirmClearAll ? (
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.45rem',
-                  background: 'rgba(132, 132, 132, 0.12)',
-                  padding: '0.25rem 0.55rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(132, 132, 132, 0.35)',
-                  animation: 'fadeIn 0.2s ease'
-                }}>
-                  <span style={{ fontSize: '0.74rem', color: '#bcbcbc', fontWeight: 600 }}>
-                     {t.form.areYouSure}
-                  </span>
+                <div className="history-clear-confirm" role="group" aria-label={t.form.areYouSure}>
+                  <span>{t.form.areYouSure}</span>
                   <button
                     type="button"
+                    className="history-clear-confirm-action"
                     onClick={() => {
                       clearAllHistory();
                       setConfirmClearAll(false);
                     }}
-                    style={{
-                      fontSize: '0.74rem',
-                      color: '#ffffff',
-                      background: '#848484',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '0.25rem 0.55rem',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.2rem',
-                      boxShadow: '0 2px 8px rgba(132, 132, 132, 0.4)'
-                    }}
                   >
-                     {t.form.confirmClear}
+                    {t.form.confirmClear}
                   </button>
                   <button
                     type="button"
+                    className="history-clear-cancel"
                     onClick={() => setConfirmClearAll(false)}
-                    style={{
-                      fontSize: '0.74rem',
-                      color: 'var(--text-secondary)',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      borderRadius: '6px',
-                      padding: '0.25rem 0.45rem',
-                      cursor: 'pointer',
-                      fontWeight: 500
-                    }}
                   >
-                     {t.form.cancel}
+                    {t.form.cancel}
                   </button>
                 </div>
               ) : (
                 <button
                   type="button"
+                  className="history-clear-all-button"
                   onClick={() => setConfirmClearAll(true)}
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#9b9b9b',
-                    background: 'rgba(132, 132, 132, 0.1)',
-                    border: '1px solid rgba(132, 132, 132, 0.3)',
-                    borderRadius: '8px',
-                    padding: '0.45rem 0.75rem',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    transition: 'all 0.2s ease',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.3rem'
-                  }}
                 >
                   {t.form.clearAll}
                 </button>
@@ -3074,33 +2997,27 @@ Transcript:
               <button
                 type="button"
                 onClick={() => setShowHistory(h => !h)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-secondary)',
-                  borderRadius: '8px',
-                  padding: '0.45rem 0.7rem',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                  fontWeight: 600
-                }}
-                title={showHistory ? "Minimize" : "Expand"}
+                className="history-toggle-button"
+                aria-expanded={showHistory}
+                aria-controls="history-list-region"
+                aria-label={showHistory ? t.form.collapseHistory : t.form.expandHistory}
               >
-                {showHistory ? '▲' : '▼'}
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                  <path d={showHistory ? 'm5 12 5-5 5 5' : 'm5 8 5 5 5-5'} />
+                </svg>
               </button>
             </div>
           </div>
 
           {/* Expanded content */}
-          {showHistory && (
-            <div style={{ marginTop: '1.25rem' }}>
+          <div id="history-list-region" className="history-content" hidden={!showHistory}>
               {historySearchQuery.trim() && (
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="history-filter-count">
                   <span>{t.form.showingHistoryCount(filteredHistory.length, history.length)}</span>
                   <button
                     type="button"
                     onClick={() => setHistorySearchQuery('')}
-                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.78rem', textDecoration: 'underline' }}
+                    className="history-inline-clear"
                   >
                     {t.form.clearSearch}
                   </button>
@@ -3108,106 +3025,70 @@ Transcript:
               )}
 
               {filteredHistory.length === 0 ? (
-                <div style={{
-                  padding: '2rem 1rem',
-                  textAlign: 'center',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  borderRadius: '12px',
-                  border: '1px dashed rgba(255, 255, 255, 0.1)'
-                }}>
-                  <span style={{ fontSize: '1.75rem', display: 'block', marginBottom: '0.5rem' }}></span>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                <div className="history-empty-state">
+                  <p>
                     {t.form.noHistoryMatch}
                   </p>
                   {historySearchQuery && (
                     <button
                       type="button"
                       onClick={() => setHistorySearchQuery('')}
-                      style={{
-                        marginTop: '0.75rem',
-                        fontSize: '0.78rem',
-                        background: 'rgba(128, 128, 128, 0.15)',
-                        border: '1px solid rgba(128, 128, 128, 0.35)',
-                        color: '#9f9f9f',
-                        borderRadius: '6px',
-                        padding: '0.35rem 0.8rem',
-                        cursor: 'pointer'
-                      }}
+                      className="history-inline-clear"
                     >
                       {t.form.clearSearch}
                     </button>
                   )}
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '420px', overflowY: 'auto', paddingRight: '0.35rem' }}>
+                <div className="history-list">
                   {filteredHistory.map((entry) => {
                     const q = historySearchQuery.trim().toLowerCase();
                     const matchedClip = q ? entry.clip_titles?.find(t => t.toLowerCase().includes(q)) : null;
                     const matchedQuote = (!matchedClip && q) ? entry.key_quotes?.find(k => k.toLowerCase().includes(q)) : null;
 
                     return (
-                      <div
+                      <article
                         key={`${entry.video_id}_${entry.duration_pref}_${entry.range_suffix || ''}`}
                         className="history-entry-card"
-                        onClick={() => loadFromHistory(entry)}
                       >
                         {/* Thumbnail with overlay duration badge */}
-                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <div className="history-entry-thumbnail-wrap">
                           <img
                             src={entry.thumbnail}
                             alt=""
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="84" height="48" viewBox="0 0 84 48"><rect width="84" height="48" fill="%231e1e2d"/><polygon points="36,18 52,24 36,30" fill="%236366f1"/></svg>';
                             }}
-                            style={{ width: '84px', height: '48px', objectFit: 'cover', borderRadius: '7px', background: '#111111', display: 'block' }}
+                            className="history-entry-thumbnail"
                           />
-                          <span style={{
-                            position: 'absolute',
-                            bottom: '3px',
-                            right: '3px',
-                            background: 'rgba(0, 0, 0, 0.75)',
-                            color: '#ffffff',
-                            fontSize: '0.65rem',
-                            fontWeight: 700,
-                            padding: '0.1rem 0.3rem',
-                            borderRadius: '4px',
-                            lineHeight: 1
-                          }}>
+                          <span className="history-duration-badge">
                             {entry.duration_pref === 'auto' ? 'Auto' : entry.duration_pref}
                           </span>
                         </div>
 
                         {/* Title and details */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: '0.88rem',
-                            fontWeight: 600,
-                            color: 'var(--text-primary)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
+                        <div className="history-entry-content">
+                          <div className="history-entry-title">
                             {entry.title}
                           </div>
-                          <div style={{ display: 'flex', gap: '0.65rem', marginTop: '0.25rem', fontSize: '0.74rem', color: 'var(--text-muted)', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>{t.form.clipsCountMeta(entry.clip_count)}</span>
-                            <span>•</span>
-                            <span> {entry.duration_pref === 'auto' ? 'Auto' : entry.duration_pref}</span>
-                            <span>•</span>
-                            <span> {formatRelativeTime(entry.analyzed_at)}</span>
-                            <span>•</span>
+                          <div className="history-entry-meta">
+                            <span className="history-entry-clip-count">{t.form.clipsCountMeta(entry.clip_count)}</span>
+                            <span className="history-meta-separator">•</span>
+                            <span>{entry.duration_pref === 'auto' ? 'Auto' : entry.duration_pref}</span>
+                            <span className="history-meta-separator">•</span>
+                            <span>{formatRelativeTime(entry.analyzed_at)}</span>
+                            <span className="history-meta-separator">•</span>
                             {entry.source_type === 'gdrive' ? (
                               <a
                                 href={entry.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ color: '#a3a3a3', textDecoration: 'none', opacity: 0.9, fontWeight: 600 }}
+                                className="history-source-link"
                               >
                                  Google Drive
                               </a>
                             ) : entry.source_type === 'upload' ? (
-                              <span style={{ color: '#858585', opacity: 0.9, fontWeight: 600 }}>
+                              <span className="history-source-label">
                                  Local Video
                               </span>
                             ) : (
@@ -3215,8 +3096,7 @@ Transcript:
                                 href={entry.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ color: 'var(--primary)', textDecoration: 'none', opacity: 0.85, fontWeight: 600 }}
+                                className="history-source-link"
                               >
                                  YouTube
                               </a>
@@ -3225,64 +3105,46 @@ Transcript:
 
                           {/* Matched clip/quote search preview */}
                           {matchedClip && (
-                            <div style={{ fontSize: '0.72rem', color: '#9f9f9f', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <span style={{ fontWeight: 600 }}> {t.form.matchedClipLabel}:</span>
-                              <span style={{ fontStyle: 'italic', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>"{matchedClip}"</span>
+                            <div className="history-entry-match">
+                              <span className="history-entry-match-label">{t.form.matchedClipLabel}:</span>
+                              <span className="history-entry-match-value">"{matchedClip}"</span>
                             </div>
                           )}
                           {matchedQuote && (
-                            <div style={{ fontSize: '0.72rem', color: '#b1b1b1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <span style={{ fontWeight: 600 }}> {t.form.matchedQuoteLabel}:</span>
-                              <span style={{ fontStyle: 'italic', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>"{matchedQuote}"</span>
+                            <div className="history-entry-match">
+                              <span className="history-entry-match-label">{t.form.matchedQuoteLabel}:</span>
+                              <span className="history-entry-match-value">"{matchedQuote}"</span>
                             </div>
                           )}
                         </div>
 
                         {/* Action buttons */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                        <div className="history-entry-actions">
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); loadFromHistory(entry); }}
-                            style={{
-                              background: 'rgba(128, 128, 128, 0.15)',
-                              border: '1px solid rgba(128, 128, 128, 0.4)',
-                              color: '#9f9f9f',
-                              borderRadius: '6px',
-                              padding: '0.35rem 0.75rem',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.3rem'
-                            }}
+                            onClick={() => loadFromHistory(entry)}
+                            className="history-load-button"
                           >
-                             {t.form.loadVideo}
+                            {t.form.loadVideo}
                           </button>
                           <button
                             type="button"
                             onClick={(e) => deleteHistoryEntry(entry, e)}
-                            style={{
-                              background: 'rgba(132, 132, 132, 0.08)',
-                              border: '1px solid rgba(132, 132, 132, 0.25)',
-                              color: '#848484',
-                              borderRadius: '6px',
-                              padding: '0.35rem 0.55rem',
-                              cursor: 'pointer',
-                              fontSize: '0.75rem'
-                            }}
+                            className="history-remove-button"
+                            aria-label={t.form.removeFromHistory}
                             title={t.form.removeFromHistory}
                           >
-
+                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                              <path d="M3.5 5.5h13M8 5.5V3.8h4v1.7m-6.5 0 .8 10.7h7.4l.8-10.7M8.2 8.5v5M11.8 8.5v5" />
+                            </svg>
                           </button>
                         </div>
-                      </div>
+                      </article>
                     );
                   })}
                 </div>
               )}
             </div>
-          )}
         </section>
       )}
 
@@ -3306,7 +3168,7 @@ Transcript:
                     padding: '0.75rem 1rem',
                     borderRadius: '8px',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
-                    fontFamily: 'monospace',
+                    fontFamily: 'Inter',
                     maxHeight: '260px',
                     overflowY: 'auto'
                   }}>
@@ -3329,7 +3191,7 @@ Transcript:
                       }}
                     >
                       <span className={loading ? "spinner-icon" : ""}></span>
-                      {t.errors.tryAgain || "Try Again"}
+                      {t.errors.tryAgain}
                     </button>
                     <button
                       type="button"
@@ -3356,7 +3218,7 @@ Transcript:
                     </button>
                   </div>
                   <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', borderLeft: '3px solid #b1b1b1', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                     <strong>Tip:</strong> {t.errors.noSubtitlesTip}
+                     <strong>{t.form.subtitlesTipTitle}</strong> {t.errors.noSubtitlesTip}
                   </div>
                 </>
               ) : (
@@ -3419,44 +3281,32 @@ Transcript:
         <section
           ref={loadingSectionRef}
           id="loading-progress-section"
-          className="glass-panel"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-            alignItems: 'center',
-            padding: '2.5rem 1.75rem',
-            scrollMarginTop: '2.5rem'
-          }}
+          className="glass-panel loading-progress-panel"
         >
-          <div style={{ width: '100%', maxWidth: '620px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-              <h3 style={{ marginBottom: '0.4rem', fontSize: '1.4rem' }} className="text-gradient">
+          <div className="loading-progress-inner">
+            <div className="loading-panel-heading">
+              <h3 className="text-gradient">
                 {t.loading.decodingEngagement}
               </h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
+              <p>
                 {t.loading.decodingSubtitle}
               </p>
             </div>
 
             {/* Master Progress Bar */}
-            <div style={{ marginBottom: '2rem', padding: '0.85rem 1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className="loading-overall-progress">
+              <div className="loading-overall-progress-header">
+                <span>
                   {t.loading.pipelineCompletion}
                 </span>
-                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>
+                <span className="loading-overall-progress-value">
                   {overallProgress}%
                 </span>
               </div>
-              <div style={{ height: '7px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div className="loading-overall-progress-track" role="progressbar" aria-label={t.loading.pipelineCompletion} aria-valuemin={0} aria-valuemax={100} aria-valuenow={overallProgress}>
                 <div
-                  style={{
-                    height: '100%',
-                    background: 'linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%)',
-                    width: `${overallProgress}%`,
-                    transition: 'width 0.4s ease'
-                  }}
+                  className="loading-overall-progress-fill"
+                  style={{ width: `${overallProgress}%` }}
                 />
               </div>
             </div>
@@ -3465,7 +3315,7 @@ Transcript:
             <div className="stepper-container">
               {/* Step 1 */}
               <div className={`step-item ${currentStep === 1 ? 'active' : currentStep > 1 ? 'completed' : ''}`}>
-                <div className="step-circle">{currentStep > 1 ? '' : '1'}</div>
+                <div className="step-circle">{currentStep > 1 ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8" /></svg> : '1'}</div>
                 <div className="step-content">
                   <div className="step-header-row">
                     <span className="step-label">{t.loading.step1Label}</span>
@@ -3487,7 +3337,7 @@ Transcript:
 
               {/* Step 2 */}
               <div className={`step-item ${currentStep === 2 ? 'active' : currentStep > 2 ? 'completed' : ''}`}>
-                <div className="step-circle">{currentStep > 2 ? '' : '2'}</div>
+                <div className="step-circle">{currentStep > 2 ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8" /></svg> : '2'}</div>
                 <div className="step-content">
                   <div className="step-header-row">
                     <span className="step-label">{t.loading.step2Label}</span>
@@ -3509,7 +3359,7 @@ Transcript:
 
               {/* Step 3 */}
               <div className={`step-item ${currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : ''}`}>
-                <div className="step-circle">{currentStep > 3 ? '' : '3'}</div>
+                <div className="step-circle">{currentStep > 3 ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8" /></svg> : '3'}</div>
                 <div className="step-content">
                   <div className="step-header-row">
                     <span className="step-label">{t.loading.step3Label}</span>
@@ -3550,8 +3400,8 @@ Transcript:
               </div>
 
               {/* Step 4 */}
-              <div className={`step-item ${currentStep === 4 ? 'active' : ''}`}>
-                <div className="step-circle">{currentStep > 4 ? '' : '4'}</div>
+              <div className={`step-item ${currentStep === 4 ? 'active' : currentStep > 4 ? 'completed' : ''}`}>
+                <div className="step-circle">{currentStep > 4 ? <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8" /></svg> : '4'}</div>
                 <div className="step-content">
                   <div className="step-header-row">
                     <span className="step-label">{t.loading.step4Label}</span>
@@ -3613,7 +3463,7 @@ Transcript:
               </div>
             </div>
 
-            <div style={{ marginTop: '1.75rem', textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            <div className="loading-progress-live-detail" aria-live="polite">
               <span className="pulsing-text"> {loadingDetails}</span>
             </div>
           </div>
@@ -3625,8 +3475,8 @@ Transcript:
         <main className="dashboard-grid">
           {/* Left panel: Player + Heatmap */}
           <div className="sticky-player-panel" ref={leftPanelRef}>
-            <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <h2 style={{ fontSize: '1.25rem', lineHeight: 1.3 }}>{result.title}</h2>
+            <div className="glass-panel player-heatmap-panel">
+              <h2 className="player-video-title">{result.title}</h2>
 
               <div className="video-wrapper" style={{ position: 'relative' }}>
                 {(result.video_url || result.source_type === 'upload' || result.source_type === 'gdrive' || result.video_id?.startsWith('upload_') || result.video_id?.startsWith('gdrive_')) ? (
@@ -3668,51 +3518,24 @@ Transcript:
 
               {/* Refresh Player control */}
               {/* Player control buttons: Refresh Player & Download Raw Video */}
-              <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.25rem', marginBottom: '0.25rem' }}>
+              <div className="player-action-row">
                 <button
                   type="button"
-                  className="form-input"
+                  className="player-action-button player-action-secondary"
                   onClick={handleRefreshPlayer}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.4rem',
-                    fontSize: '0.8rem',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    color: 'var(--text-primary)'
-                  }}
                 >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.6 9a7 7 0 0 1 11.8-2L20 12M4 12l2.6 5a7 7 0 0 0 11.8-2" /></svg>
                   {t.results.refreshPlayer}
                 </button>
 
                 <button
                   type="button"
-                  className="form-input glowing-btn"
+                  className="player-action-button player-action-primary"
                   onClick={handleDownloadRawVideo}
                   disabled={isDownloadingRaw}
-                  title="Download full original YouTube video at highest 1080p resolution"
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.4rem',
-                    fontSize: '0.8rem',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    cursor: isDownloadingRaw ? 'not-allowed' : 'pointer',
-                    background: 'linear-gradient(135deg, rgba(133, 133, 133, 0.25) 0%, rgba(109, 109, 109, 0.45) 100%)',
-                    border: '1px solid rgba(133, 133, 133, 0.5)',
-                    color: '#ffffff',
-                    fontWeight: 600
-                  }}
+                  title={t.results.downloadRawVideo}
                 >
+                  {!isDownloadingRaw && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M5 16v4h14v-4" /></svg>}
                   {isDownloadingRaw ? (
                     <>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="spinner-icon" style={{ animation: 'spin 1s linear infinite' }}>
@@ -3815,10 +3638,14 @@ Transcript:
                   <h3 style={{ fontSize: '1.05rem', color: 'var(--secondary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {t.results.generatedClipsOverview(result.clips.length)}
                   </h3>
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <div className="overview-actions">
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
                     <button
                       type="button"
                       onClick={(e) => toggleTimestampMenu('overview', e)}
+                      aria-haspopup="dialog"
+                      aria-expanded={copyTimestampMenuTarget === 'overview'}
+                      aria-controls={copyTimestampMenuTarget === 'overview' ? 'timestamp-format-menu-overview' : undefined}
                       title={t.results.copyAllTimestampsTooltip}
                       style={{
                         fontSize: '0.72rem',
@@ -3849,7 +3676,8 @@ Transcript:
                     >
                       {t.results.copyAllTimestamps} ▾
                     </button>
-                    {copyTimestampMenuTarget === 'overview' && renderTimestampFormatMenu('right')}
+                    {copyTimestampMenuTarget === 'overview' && renderTimestampFormatMenu('overview', 'right')}
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '250px', overflowY: 'auto', paddingRight: '0.5rem' }}>
@@ -3869,10 +3697,10 @@ Transcript:
                           padding: '0.5rem',
                           borderRadius: '6px',
                           background: isSelected
-                            ? 'rgba(148, 148, 148, 0.1)'
+                            ? 'var(--accent-purple-soft)'
                             : 'rgba(255, 255, 255, 0.02)',
                           border: isSelected
-                            ? '1px solid var(--secondary)'
+                            ? '1px solid var(--accent-purple-border)'
                             : '1px solid transparent',
                           cursor: 'pointer',
                           transition: 'var(--transition-smooth)',
@@ -3891,13 +3719,13 @@ Transcript:
                               width: '14px',
                               height: '14px',
                               cursor: 'pointer',
-                              accentColor: 'var(--secondary)'
+                              accentColor: 'var(--accent-purple)'
                             }}
                           />
                           <span style={{
                             fontWeight: isSelected ? 700 : 500,
                             color: isMarked
-                              ? 'var(--secondary)'
+                              ? 'var(--accent-purple-text)'
                               : (isSelected ? 'var(--text-primary)' : 'var(--text-secondary)'),
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
@@ -3910,11 +3738,9 @@ Transcript:
                           <span style={{
                             fontSize: '0.68rem',
                             fontWeight: 700,
-                            color: clip.virality_score >= 90 ? 'var(--secondary)' : 'var(--primary)',
-                            background: clip.virality_score >= 90
-                              ? 'rgba(148, 148, 148, 0.12)'
-                              : 'rgba(128, 128, 128, 0.12)',
-                            border: `1px solid ${clip.virality_score >= 90 ? 'rgba(148, 148, 148, 0.35)' : 'rgba(128, 128, 128, 0.35)'}`,
+                            color: clip.virality_score >= 90 ? '#6020a0' : '#725095',
+                            background: clip.virality_score >= 90 ? '#f2e8ff' : '#f8f4fc',
+                            border: `1px solid ${clip.virality_score >= 90 ? '#d9b8fc' : '#e9ddf5'}`,
                             borderRadius: '4px',
                             padding: '0.05rem 0.35rem',
                             whiteSpace: 'nowrap'
@@ -3926,7 +3752,7 @@ Transcript:
                             title={t.results.copyTimestampTooltip}
                             style={{
                               color: 'var(--text-muted)',
-                              fontFamily: 'monospace',
+                              fontFamily: 'Inter',
                               fontSize: '0.68rem',
                               whiteSpace: 'nowrap',
                               cursor: 'pointer',
@@ -3955,45 +3781,48 @@ Transcript:
           </div>
 
           {/* Right panel: Suggested Clips scrollable list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: leftPanelHeight ? `${leftPanelHeight}px` : '80vh' }}>
+          <div className="results-recommendations-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: leftPanelHeight ? `${leftPanelHeight}px` : '80vh' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ fontSize: '1.5rem', fontFamily: 'Outfit' }}>{t.results.recommendedClips}</h2>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>{t.results.sortLabel(sortBy.toUpperCase())}</span>
+              <div className="results-heading-row">
+                <h2 className="results-panel-title">{t.results.recommendedClips}</h2>
+              </div>
+              <div className="results-studio-next-step">
+                <span className="results-studio-step-number" aria-hidden="true">2</span>
+                <div className="results-studio-step-copy">
+                  <strong>{t.results.studioNextStepLabel}</strong>
+                  <span>{t.results.studioWorkflowHint}</span>
+                </div>
+                <button
+                  type="button"
+                  className="studio-open-workspace-btn"
+                  onClick={() => setIsStudioWorkspaceOpen(true)}
+                >
+                  {t.studio.openWorkspace}
+                  <span>{markedClipsList.length}</span>
+                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
+                </button>
               </div>
 
               {/* Analysis Metadata Info Bar */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '1rem',
-                padding: '0.6rem 1rem',
-                borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid var(--border-color)',
-                fontSize: '0.8rem',
-                color: 'var(--text-secondary)',
-                flexWrap: 'wrap'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '1rem' }}></span>
+              <div className="results-model-summary">
+                <div className="results-model-summary-item">
                   <span>{t.results.aiModelBadge}</span>
-                  <strong style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                  <strong>
                     {result.model || selectedModel}
                   </strong>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '1rem' }}></span>
+                <div className="results-model-summary-item">
                   <span>{t.results.generatedClipsBadge}</span>
-                  <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  <strong>
                     {result.clips.length}
                   </strong>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '1rem' }}></span>
+                <div className="results-model-summary-item">
                   <span>{t.results.markedClipsBadge}</span>
-                  <strong style={{ color: 'var(--secondary)', fontWeight: 600 }}>
+                  <strong>
                     {result.clips.filter(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]).length}
                   </strong>
                 </div>
@@ -4012,9 +3841,10 @@ Transcript:
 
                 <select
                   className="form-input virality-filter-select"
+                  aria-label={t.results.scoreFilterAccessibleName}
                   value={viralityFilter}
                   onChange={(e) => setViralityFilter(e.target.value as any)}
-                  style={{ width: 'auto', padding: '0.6rem 2rem 0.6rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
+                  style={{ width: 'auto', cursor: 'pointer' }}
                 >
                   <option value="all">{t.results.filterAllScores}</option>
                   <option value="high">{t.results.filterHigh}</option>
@@ -4024,9 +3854,10 @@ Transcript:
 
                 <select
                   className="form-input virality-filter-select"
+                  aria-label={t.results.clipSortAccessibleName}
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  style={{ width: 'auto', padding: '0.6rem 2rem 0.6rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
+                  style={{ width: 'auto', cursor: 'pointer' }}
                 >
                   <option value="virality">{t.results.sortVirality}</option>
                   <option value="time">{t.results.sortTime}</option>
@@ -4046,9 +3877,9 @@ Transcript:
                       onClick={() => toggleAllMarkedClips()}
                       title={result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? t.results.unmarkAllClips : t.results.markAllClips}
                       style={{
-                        background: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? 'rgba(132, 132, 132, 0.12)' : 'rgba(128, 128, 128, 0.12)',
-                        border: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '1px solid rgba(132, 132, 132, 0.35)' : '1px solid rgba(128, 128, 128, 0.35)',
-                        color: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '#9b9b9b' : 'var(--primary)',
+                        background: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '#f8f4fc' : 'var(--accent-purple-soft)',
+                        border: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '1px solid #e9ddf5' : '1px solid var(--accent-purple-border)',
+                        color: result.clips.every(clip => !!markedClips[`${clip.start_time}_${clip.end_time}`]) ? '#725095' : 'var(--accent-purple-text)',
                         borderRadius: '5px',
                         padding: '0.2rem 0.55rem',
                         fontSize: '0.74rem',
@@ -4072,12 +3903,15 @@ Transcript:
                       type="button"
                       className="action-link-btn"
                       onClick={(e) => toggleTimestampMenu('toolbar', e)}
+                      aria-haspopup="dialog"
+                      aria-expanded={copyTimestampMenuTarget === 'toolbar'}
+                      aria-controls={copyTimestampMenuTarget === 'toolbar' ? 'timestamp-format-menu-toolbar' : undefined}
                       title={t.results.copyAllTimestampsTooltip}
                       style={{ background: 'none', border: 'none', color: 'var(--secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
                     >
                       {t.results.copyAllTimestamps} ▾
                     </button>
-                    {copyTimestampMenuTarget === 'toolbar' && renderTimestampFormatMenu('left')}
+                    {copyTimestampMenuTarget === 'toolbar' && renderTimestampFormatMenu('toolbar', 'left')}
                   </div>
                   <span style={{ color: 'var(--border-color)' }}>|</span>
                   <button
@@ -4121,17 +3955,19 @@ Transcript:
                 </div>
               ) : (
                 sortedClips.map((clip, index) => {
+                  const clipKey = `${clip.start_time}_${clip.end_time}`;
                   const isActive = activeClip?.start_time === clip.start_time && activeClip?.end_time === clip.end_time;
                   const isExpanded = expandedClipIndex === index;
+                  const isDetailsOpen = selectedClipDetailKey === clipKey;
 
                   return (
                     <div
                       key={index}
                       id={`clip-card-${index}`}
-                      className={`clip-card ${isActive ? 'active' : ''}`}
+                      className={`clip-card ${isActive ? 'active' : ''} ${markedClips[clipKey] ? 'marked' : ''} ${isDetailsOpen ? 'details-open' : ''}`}
                       onClick={() => {
                         setActiveClip(clip);
-                        setExpandedClipIndex(isExpanded ? null : index);
+                        if (!isDetailsOpen) setSelectedClipDetailKey(clipKey);
                       }}
                     >
                       {/* Header */}
@@ -4140,6 +3976,7 @@ Transcript:
                           <input
                             type="checkbox"
                             checked={!!markedClips[`${clip.start_time}_${clip.end_time}`]}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={(e) => {
                               e.stopPropagation();
                               toggleMarkedClip(`${clip.start_time}_${clip.end_time}`);
@@ -4148,13 +3985,13 @@ Transcript:
                               width: '18px',
                               height: '18px',
                               cursor: 'pointer',
-                              accentColor: 'var(--primary)'
+                              accentColor: 'var(--accent-purple)'
                             }}
                           />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
                           <div className="clip-title-row">
-                            <span className="clip-title" style={{ color: !!markedClips[`${clip.start_time}_${clip.end_time}`] ? 'var(--secondary)' : 'var(--text-primary)', opacity: 1 }}>
+                            <span className="clip-title" style={{ color: !!markedClips[`${clip.start_time}_${clip.end_time}`] ? 'var(--accent-purple-text)' : 'var(--text-primary)', opacity: 1 }}>
                               {clip.title}
                             </span>
                             <button
@@ -4180,6 +4017,7 @@ Transcript:
                             <span>{t.results.durationLabel(formatSeconds(clip.end_time - clip.start_time))}</span>
                             {clip.hook_time !== undefined && (
                               <span
+                                className="clip-hook-pill"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleSeek(clip.hook_time!);
@@ -4190,9 +4028,9 @@ Transcript:
                                   gap: '2px',
                                   fontSize: '0.72rem',
                                   fontWeight: 'bold',
-                                  color: 'var(--accent)',
-                                  background: 'rgba(163, 163, 163, 0.12)',
-                                  border: '1px solid rgba(163, 163, 163, 0.35)',
+                                  color: 'var(--accent-purple-text)',
+                                  background: 'var(--accent-purple-soft)',
+                                  border: '1px solid var(--accent-purple-border)',
                                   borderRadius: '4px',
                                   padding: '0.05rem 0.35rem',
                                   cursor: 'pointer',
@@ -4211,17 +4049,17 @@ Transcript:
                             <span>{t.results.viralityBadge(clip.virality_score)}</span>
                           </div>
                           {!!markedClips[`${clip.start_time}_${clip.end_time}`] && (
-                            <div style={{
+                            <div className="clip-marked-badge" style={{
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px',
                               fontSize: '0.65rem',
                               fontWeight: 'bold',
-                              color: 'var(--secondary)',
-                              background: 'rgba(148, 148, 148, 0.12)',
+                              color: 'var(--accent-purple-text)',
+                              background: '#f2e8ff',
                               padding: '0.15rem 0.4rem',
                               borderRadius: '4px',
-                              border: '1px solid var(--secondary)'
+                              border: '1px solid #d9b8fc'
                             }}>
                               {t.results.markedBadge}
                             </div>
@@ -4229,7 +4067,20 @@ Transcript:
                         </div>
                       </div>
 
-                      {/* Key spoken quotes */}
+                      <button
+                        type="button"
+                        className="clip-detail-toggle-label"
+                        aria-expanded={isDetailsOpen}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveClip(clip);
+                          setSelectedClipDetailKey(isDetailsOpen ? null : clipKey);
+                        }}
+                      >
+                        {isDetailsOpen ? t.results.hideClipDetails : t.results.showClipDetails}
+                      </button>
+
+                      {/* Full details appear only for the selected clip */}
                       {clip.key_quotes && clip.key_quotes.length > 0 && (
                         <div className="clip-quotes">
                           {clip.key_quotes.map((quote, qIdx) => (
@@ -4389,11 +4240,17 @@ Transcript:
                         >
                           {t.results.copyDetails}
                         </button>
-                        <span
-                          style={{ display: 'flex', alignItems: 'center', fontSize: '0.74rem', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer', userSelect: 'none', marginLeft: '0.15rem' }}
+                        <button
+                          type="button"
+                          className="clip-transcript-toggle"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedClipIndex(isExpanded ? null : index);
+                          }}
+                          aria-expanded={isExpanded}
                         >
                           {isExpanded ? t.results.hideTranscript : t.results.showTranscript}
-                        </span>
+                        </button>
                       </div>
 
                       {/* Expandable transcript text block */}
@@ -4439,9 +4296,10 @@ Transcript:
       {/* Embedded Clip Studio Section with side inline batch progress */}
       {result && (
         <ClipStudioSection
-          videoUrl={result.video_url || url}
+          videoUrl={currentResultVideoUrl}
           videoId={result.video_id}
           allClips={result.clips}
+          transcript={result.transcript}
           markedClips={markedClipsList}
           activeClip={activeClip}
           onStartRender={handleStartBatchRender}
@@ -4449,6 +4307,8 @@ Transcript:
           onToggleMarkClip={(clip) => toggleMarkedClip(`${clip.start_time}_${clip.end_time}`)}
           onToggleAllClips={toggleAllMarkedClips}
           batchProgress={batchProgress}
+          isWorkspaceOpen={isStudioWorkspaceOpen}
+          onExitWorkspace={() => setIsStudioWorkspaceOpen(false)}
           onDismissProgress={() => {
             if (batchEventSourceRef.current) {
               batchEventSourceRef.current.close();
@@ -4461,6 +4321,8 @@ Transcript:
       )}
 
       {/* YouTube Cookies Modal */}
+      {isUserGuideOpen && <UserGuideModal onClose={() => setIsUserGuideOpen(false)} />}
+
       <CookiesModal
         isOpen={isCookiesModalOpen}
         onClose={() => setIsCookiesModalOpen(false)}
@@ -4533,10 +4395,12 @@ Transcript:
         </div>
       )}
       <footer className="dema-footer">
-        <span>{t.header.developerCredit}</span>
+        <span className="dema-footer-copy">{t.header.developerCredit}</span>
         <a href="https://demadigitalasia.com" target="_blank" rel="noopener noreferrer">
-          Dema Digital Asia <span>demadigitalasia.com</span>
+          Dema Digital Asia
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M9 2h5v5M14 2 7 9" /><path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" /></svg>
         </a>
+        <span className="dema-footer-period" aria-hidden="true">.</span>
       </footer>
     </div>
   );

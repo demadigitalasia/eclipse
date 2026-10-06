@@ -1,17 +1,17 @@
 export const en = {
   header: {
     subtitle: "A faster, easier way to create video clips",
-    heroEyebrow: "THE SHORT-FORM EDITING DESK · 01",
-    heroTitle: "Find the moment. Make it yours.",
-    heroBody: "Turn a video into share-ready clips, quickly and easily. ECLIPSE finds the strongest moments and gives you room to shape every cut.",
-    developerCredit: "ECLIPSE is developed by",
+    heroEyebrow: "ECLIPSE VIDEO CLIPPER",
+    heroTitle: "Find the moments worth sharing.",
+    heroBody: "ECLIPSE analyzes your video and recommends moments to turn into clips. Review each suggestion, fine-tune the cut, and download it for your channels.",
+    developerCredit: "Developed by",
     supportProject: "Support creator",
     cookiesBtn: "Cookies",
     cookiesStatusActive: "● 1080p",
     cookiesStatusSetup: "○ Setup",
     cookiesTooltipActive: "YouTube cookies active (1080p source enabled)",
     cookiesTooltipSetup: "Configure YouTube cookies for 1080p source downloads",
-    clearTempBtn: "Clear Temp",
+    clearTempBtn: "Clear temporary files",
     clearingTempBtn: "Clearing...",
     clearTempTooltip: "Clear temporary downloaded clip segments, audio slices, and ASS files from disk",
     confirmClearTemp: "Are you sure you want to clear all temporary downloaded files and render cache?",
@@ -21,14 +21,105 @@ export const en = {
     confirmModalCookieNotice: "Stored YouTube cookies are SAFE and will NEVER be deleted.",
     updateBtn: "Update",
     updateBtnTooltip: "Check for updates and view version status",
+    closeBtn: "Close",
+  },
+  guide: {
+    buttonLabel: "User guide",
+    eyebrow: "Step-by-step help",
+    title: "ECLIPSE user guide",
+    subtitle: "Follow the workflow from preparing a video to reviewing clips and exporting a finished edit.",
+    closeLabel: "Close user guide",
+    contentsTitle: "Guide contents",
+    sectionProgress: (current: number, total: number) => `Section ${current} of ${total}`,
+    previousSection: "Previous",
+    nextSection: "Next",
+    sections: [
+      {
+        title: "Before you start",
+        intro: "Prepare an AI Studio API key and choose a video source. Your Gemini key is saved in this browser so you do not need to paste it again on this device.",
+        steps: [
+          "In AI Engine Settings, paste a Gemini API key. Use Get free key if you still need to create one. The key is required to run an analysis.",
+          "Use Show key only when you need to verify the pasted value, then hide it again. Avoid saving a personal key on a shared or public computer.",
+          "For YouTube downloads, optional Cookies setup can help ECLIPSE access a higher-quality source. Follow the instructions in the Cookies dialog; the status appears in the header."
+        ]
+      },
+      {
+        title: "Choose a video source",
+        intro: "Select one of the three source tabs at the top of the form. Provide a link or file that you are allowed to access and process.",
+        steps: [
+          "YouTube Video accepts a standard video, Shorts, or youtu.be link. Private, age-restricted, or unavailable videos may not be accessible.",
+          "Google Drive accepts a share link. Make sure the file permissions allow the app to read the video; restricted links will fail to download.",
+          "Upload Video File accepts MP4, MOV, MKV, WebM, AVI, M4V, FLV, and WMV files up to 4 GB. Wait until the upload says it is ready before continuing.",
+          "Uploaded and Google Drive videos are transcribed with Whisper AI. YouTube can use available captions; if transcription is unavailable, provide a subtitle file in the next settings."
+        ]
+      },
+      {
+        title: "Set up the analysis",
+        intro: "Choose settings that match the video and the kind of moments you want ECLIPSE to find. You can leave optional fields at their defaults.",
+        steps: [
+          "Choose an available Gemini model. If the selected model reaches its quota or fails, ECLIPSE can try another available Flash model for your key.",
+          "Set target clip duration to 15, 30, or 60 seconds, or choose Auto to let the AI adapt the duration to preserve the conversation context.",
+          "Enter a specific topic or moment in Find Specific Moments to guide selection; leave it empty for a broad search. Choose Auto or enter a custom target clip count.",
+          "Choose automatic YouTube subtitles or upload a manual .srt or .txt file. For custom analysis range, enter start and end times as MM:SS, HH:MM:SS, or seconds."
+        ]
+      },
+      {
+        title: "Run and follow the analysis",
+        intro: "When the source and required settings are ready, select Find moments / Cari Klip. The progress panel reports the stages as they run.",
+        steps: [
+          "The pipeline checks the source, collects available retention and subtitle information, then analyzes the transcript and selects clips with supporting metadata.",
+          "Keep the page open while processing. A transient retry or model-busy message means ECLIPSE is waiting and trying again; allow it to continue.",
+          "If analysis stops with an error, check that the API key is valid, the video is accessible, and the selected time range is valid. If captions are missing, try a manual subtitle file."
+        ]
+      },
+      {
+        title: "Review the results",
+        intro: "After analysis, use the player and results area together to inspect the source and decide which suggested moments are worth editing.",
+        steps: [
+          "Play or seek in the video player. When retention data is available, the heatmap shows audience-retention activity and marked clip regions; click or focus it and use the arrow keys to seek.",
+          "Read the video summary and generated clip list. Search, filter by score or marked state, and sort by virality, time, or duration to narrow the list.",
+          "Open a clip’s details to read its transcript excerpt, hook, suggested title, and caption. Use the clip preview controls to check the moment before editing."
+        ]
+      },
+      {
+        title: "Mark, preview, and download clips",
+        intro: "Mark the clips you want to work on. The marked count is used when opening the Studio and helps you keep a batch focused.",
+        steps: [
+          "Select a checkbox on an individual clip to mark or unmark it. Use the mark-all control to select or clear every clip in the current analysis.",
+          "Use Preview Clip / Putar Klip to jump to the selected moment. Use Download Clip / Unduh Klip to open the clip editor and refine its start or end before downloading.",
+          "Use the copy actions for timestamps or clip details. Export JSON for structured clip data and SRT for subtitle text when transcript data is available."
+        ]
+      },
+      {
+        title: "Edit and render in Studio",
+        intro: "Open Studio after marking the clips you want to prepare. Review the preview as you adjust each clip and render the selected batch when it is ready.",
+        steps: [
+          "Choose a canvas aspect ratio for the destination platform, such as 9:16 for vertical video, 1:1, 4:3, or 16:9 landscape/letterbox.",
+          "Adjust framing and focal point. AI face and object centering can help keep the active speaker visible; choose a manual center or left/right focus when needed.",
+          "Choose a layout, caption and title styling, and any available audio or watermark options. Check the live preview, then start rendering and monitor batch progress.",
+          "Wait for each render to finish before using its download action. The render card displays the available output details and status."
+        ]
+      },
+      {
+        title: "History, temporary files, and troubleshooting",
+        intro: "Use history to return to saved analyses. Header cleanup controls have different purposes, so check what they remove before confirming.",
+        steps: [
+          "Search Riwayat Video Dianalisis by video, clip, or quote, then choose Muat Analisis to reopen a saved result. Remove one entry or clear all history with the controls in that section.",
+          "Bersihkan file sementara deletes temporary downloaded clip segments, audio slices, and ASS files/render cache. It is separate from saved analysis history; read the confirmation before proceeding.",
+          "If Drive cannot be read, update its sharing permissions. If an upload is rejected, check the supported format and 4 GB limit. If captions are missing, add an SRT or TXT subtitle file.",
+          "If the model reports quota or service busy, wait for the retry or select another available model. If Studio opens with no clips selected, return to results and mark at least one clip."
+        ]
+      }
+    ]
   },
   form: {
     sourceType: "Input Source",
+    sourceSelectionLabel: "Video source",
     tabYoutube: "YouTube Video",
     tabGdrive: "Google Drive",
     tabUpload: "Upload Video File",
     dropVideoTitle: "Drop video file here or click to browse",
-    dropVideoSubtitle: "Supports MP4, MOV, MKV, WebM, AVI (up to 2GB)",
+    dropVideoSubtitle: "MP4, MOV, MKV, WebM, AVI, M4V, FLV, or WMV · Up to 4 GB",
     uploadingVideo: "Uploading video file...",
     uploadedVideoReady: "Video file loaded and ready for AI analysis",
     changeVideo: "Change Video",
@@ -41,6 +132,7 @@ export const en = {
     gdriveUrlPlaceholder: "Paste Google Drive share link (e.g. https://drive.google.com/file/d/.../view)",
     hackClips: "Find moments",
     processing: "Processing...",
+    analysisSubmitHint: "Review the source and settings above before starting analysis.",
 
     // AI Engine settings
     aiSettingsTitle: "AI Engine Settings",
@@ -53,8 +145,8 @@ export const en = {
     apiKeyErrorHint: "Required — saved locally in browser.",
     aiModelLabel: "AI Model Selection",
     fetchingModels: "Fetching available...",
-    resilienceTip: "Free Tier Resilience:",
-    resilienceDesc: "If a model reaches a quota or fails, ECLIPSE tries other Flash models available to your API key.",
+    resilienceTip: "Automatic Model Fallback:",
+    resilienceDesc: "If the selected model fails or reaches its quota, ECLIPSE tries another Flash model available to your API key.",
 
     // Customization
     clipCustomizationTitle: "Clip Customization",
@@ -90,14 +182,16 @@ export const en = {
     analysisRange: "Analysis Range",
     entireVideo: "Entire Video",
     customRange: "Custom Range",
-    startPlaceholder: "Start (e.g. 29:00)",
-    endPlaceholder: "End (e.g. 31:15)",
+    startPlaceholder: "Start (MM:SS)",
+    endPlaceholder: "End (MM:SS)",
     to: "to",
     rangeFormatHint: "Supports format like MM:SS (e.g., 29:00), HH:MM:SS, or raw seconds (e.g., 600).",
 
     // History
     previouslyAnalyzed: "Previously Analyzed Videos",
     historySubtitle: "Instant access to cached video analyses and generated viral clips",
+    collapseHistory: "Collapse video history",
+    expandHistory: "Expand video history",
     searchHistoryPlaceholder: "Search previous videos, clips, or quotes...",
     noHistoryMatch: "No previous videos or clips match your search.",
     clearSearch: "Clear",
@@ -121,13 +215,23 @@ export const en = {
     invalidEnd: "Invalid end time format. Please use MM:SS (e.g. 31:15), HH:MM:SS, or raw seconds.",
     startLessThanEnd: "Start time must be less than end time.",
     chooseSubtitleFile: "Please choose or drag-and-drop a custom subtitle file (.srt or .txt).",
-    chooseVideoFilePrompt: "Please choose or drag-and-drop a video file (.mp4, .mov, .mkv, .webm, .avi).",
+    chooseVideoFilePrompt: "Please choose or drag-and-drop a video file (.mp4, .mov, .mkv, .webm, .avi, .m4v, .flv, or .wmv).",
     analysisFailed: "Analysis Failed",
     changeApiKeyAction: "Change API Key",
     tryAgain: "Try Again",
     getNewKeyLink: "Get free key at Google AI Studio ",
     noSubtitlesMsg: "No subtitles could be retrieved for this video. Subtitles might be disabled, or the video may be age-restricted or private.",
     noSubtitlesTip: "If auto-generated transcripts cannot be retrieved, you can download subtitles manually using a tool like downsub.com, upload the file via the Upload Custom Subtitles option above, and try analyzing the video again.",
+    googleDriveUrlInvalid: "Please enter a valid Google Drive video sharing link (e.g. https://drive.google.com/file/d/...).",
+    uploadVideoFailed: "Failed to upload the video file. Please try again.",
+    noResponseStream: "The server did not return an analysis stream. Please try again.",
+    analysisConnectionLost: "The server connection closed before analysis finished. Keep this tab open and check your network, then try again.",
+    backendUnavailable: "The analysis server is unavailable. Start the full app with npm run dev, then try again.",
+    unexpectedAnalysisError: "An unexpected error occurred during analysis.",
+    batchRenderStartFailed: "Could not start batch rendering. Please try again.",
+    batchRetryFailed: "Could not retry clip rendering. Please try again.",
+    clipDownloadFailed: "Could not download this clip. Please try again.",
+    dismissNotification: "Dismiss notification",
   },
   loading: {
     decodingEngagement: "Decoding Video Engagement",
@@ -140,6 +244,12 @@ export const en = {
     step3Label: "Retrieving subtitles & translating transcript",
     step3Subtext: "Aligning dialogue timestamps and sentences for precise audio cut boundaries...",
     step4Label: "AI analysis & viral clip extraction",
+    step4Subtext: "Finding strong moments, checking context, and preparing clip metadata...",
+    uploadingFile: (name: string, size: string) => `Uploading ${name} (${size} MB)...`,
+    cachedStep1: "Restoring video details from saved analysis...",
+    cachedStep2: "Restoring audience retention heatmap points...",
+    cachedStep3: "Restoring subtitles and transcript...",
+    cachedStep4: "Restoring viral highlights and clip metadata...",
     aiEngineBadge: "AI Cognitive Engine",
     timeElapsed: (secs: number) => ` ${secs}s elapsed`,
     synthesizingHighlights: "Synthesizing Viral Highlights",
@@ -164,9 +274,19 @@ export const en = {
     generatedClipsOverview: (count: number) => `Generated Clips Overview (${count})`,
     recommendedClips: "Recommended Clips",
     sortLabel: (sortName: string) => `SORT: ${sortName}`,
+    scoreFilterAccessibleName: "Filter clips by virality score",
+    clipSortAccessibleName: "Sort recommended clips",
+    timestampMenuAccessibleName: "Timestamp copy options",
+    recommendedModelHelp: "Recommended for most videos: gemini-2.5-flash.",
+    recommendedOptionLabel: "Recommended",
+    modelFlashGroup: "Gemini Flash models",
+    modelProGroup: "Gemini Pro models",
+    modelOtherGroup: "Other available models",
     aiModelBadge: "AI Model:",
     generatedClipsBadge: "Generated Clips:",
     markedClipsBadge: "Marked Clips:",
+    studioNextStepLabel: "NEXT STEP · EDIT & EXPORT",
+    studioWorkflowHint: "Mark the clips you want to edit, then open Studio to adjust the video and render your selection.",
     searchPlaceholder: " Search clips or transcripts...",
     filterAllScores: " All Scores",
     filterHigh: " High (90%+)",
@@ -200,6 +320,8 @@ export const en = {
     copyDetails: " Copy Details",
     showTranscript: "Show Transcript ▼",
     hideTranscript: "Hide Transcript ▲",
+    showClipDetails: "View details",
+    hideClipDetails: "Hide details",
     transcriptTitle: "Transcript",
     hookClickHint: "Click to jump to the potential hook timestamp",
     copyAllTimestampsSelectFormat: "Choose Format",
@@ -293,6 +415,7 @@ export const en = {
     statusFailed: " Failed",
     retryClip: " Retry",
     retryAllFailed: (count: number) => ` Retry Failed (${count})`,
+    retryAllFailedTooltip: "Retry all failed clips in this batch",
     retrying: " Retrying...",
     downloadMp4Tooltip: "Download Rendered MP4",
     downloadZip: " Download All Clips (.ZIP)",
@@ -300,8 +423,16 @@ export const en = {
     hardwareEncodingHint: "FastAPI & FFmpeg hardware encoding in progress. You can keep this open or minimize.",
   },
   studio: {
-    heading: "ECLIPSE Video Clipper",
-    subtext: "Real-time video layout framing, dynamic subtitle typography, and batch GPU-accelerated 1080x1920 export",
+    heading: "ECLIPSE STUDIO",
+    previewSampleTitle: "YOUR VIRAL HOOK TITLE",
+    subtext: "Fine-tune framing, titles, subtitles, and audio, then export clips ready to share.",
+    openWorkspace: "Open Studio",
+    backToResults: "Back to analysis",
+    tabClips: "Clips",
+    tabFrame: "Framing",
+    tabText: "Titles & captions",
+    tabAudio: "Audio & branding",
+    tabExport: "Export",
     previewClip: " Previewing Clip:",
     canvasTitle: " Canvas & Inner Aspect Ratio",
     canvasBadge: "1080×1920 Canvas",
@@ -328,7 +459,7 @@ export const en = {
     framingRight: " Right Focus (65%)",
     manualPositionTitle: " Manual Text Positioning",
     verticalBadge: "Vertical",
-    resetPosition: "↺ Reset Position",
+    resetPosition: "Reset Position",
     resetPositionTooltip: "Reset title and subtitle vertical positions to defaults",
     positionHint: "Freely nudge title and subtitle positions up or down. Bounds are automatically clamped so text never touches video content.",
     titleYLabel: " Title Vertical Position:",
@@ -368,13 +499,14 @@ export const en = {
     titlePlaceholder: "Leave empty to use AI suggested hook title...",
     titleVisible: "Visible",
     titleDisabled: "Disabled",
+    titleVisibilityLabel: "Title Banner:",
     titlePrefixLabel: "Hook Prefix (Optional):",
     titlePrefixPlaceholder: 'e.g. "PART 1: " or "[WATCH] "',
     titleSuffixLabel: "Hook Suffix (Optional):",
     titleSuffixPlaceholder: 'e.g. " " or " | Clip"',
     titleBaseHookBadge: "Base AI Hook",
     clipTitleEditLabel: "Hook Title (Active Clip):",
-    resetToAiTitle: "Reset to AI Title",
+    resetToAiTitle: "Restore AI suggestion",
     batchTitleNote: " Each clip in your batch renders with its own unique hook title. Prefix & suffix apply across all clips.",
     titleFullPreview: "Combined Banner:",
     titleDurationLabel: "Visible Duration:",
@@ -490,10 +622,22 @@ export const en = {
     statusReady: "Ready to batch render",
     recentFilesTitle: " Session Output Files:",
     batchQueueTitle: " Batch Render Queue",
+    viewRenderDetails: "View render details",
     allClipsRendered: (count: number) => ` All ${count} clips rendered!`,
     someClipsFailed: (failedCount: number, total: number) => ` ${failedCount} of ${total} clips encountered errors.`,
     allClipsFailed: " Batch rendering failed. See error details below.",
+    clipRenderFailed: "This clip could not be rendered. Copy the technical message for details.",
     copyErrorBtn: " Copy",
+    copyErrorTooltip: "Copy full error details",
+    retryClipTooltip: "Retry rendering this clip",
+    retryAllFailedTooltip: "Retry all failed clips in this batch",
+    copyFullErrorTooltip: "Click to copy the full error message",
+    tempCleared: "Temporary files cleared.",
+    tempClearFailed: "Could not clear temporary files.",
+    fontSizeTooltip: "Enter a font size in pixels (1–1000)",
+    uploadMusicFailed: "Could not upload background music. Use an MP3, WAV, or M4A file and try again.",
+    uploadSfxFailed: "Could not upload the sound effect. Use an MP3, WAV, or M4A file and try again.",
+    uploadWatermarkFailed: "Could not upload the watermark image. Please try again.",
     copiedErrorBtn: " Copied!",
     errorDetails: "Technical Error Details",
     retryHint: " Tip: Check your YouTube cookies or network connection if download failed.",
@@ -509,7 +653,7 @@ export const en = {
     retryAllFailedBtn: (count: number) => ` Retry Failed Clips (${count})`,
     retryingBtn: " Retrying...",
     readyToRenderMeta: (count: number) => `Ready to render ${count} clip${count !== 1 ? 's' : ''}`,
-    clearTempBtn: " Clear Temp",
+    clearTempBtn: " Clear temporary files",
     clearingTempBtn: " Clearing...",
     clearTempTooltip: "Clear temporary clip download cache from disk",
     outputMetaSub: "Output: 1080×1920 MP4 · Word-level Animated ASS Captions · Hardware Accelerated",
@@ -643,6 +787,10 @@ export const en = {
     resetBtn: "↺ Reset to Original",
     closeBtn: "Close",
     clipTitleLabel: "Clip Title / Filename:",
+    defaultClipTitle: "Clip",
+    clipTitlePlaceholder: "Enter a clip title",
+    loadingPreviewPlayer: "Loading preview player...",
+    dragClipWindow: "Drag to move the entire clip window",
   },
   updateModal: {
     title: "ECLIPSE Updates",
@@ -668,7 +816,16 @@ export const en = {
     reconnected: "Connected! Reloading app...",
     updateSuccessNotice: "Successfully updated! Relaunching servers...",
     errorTitle: "Update Error",
+    networkCheckFailed: "Could not connect to the update service. Check your network and try again.",
+    updateFailed: "The update could not be completed. Please try again.",
+    restartTimeout: "Restart is taking longer than expected. Refresh this page manually.",
     closeBtn: "Close",
+    restartTooltip: "Restart the backend and frontend development server",
+  },
+  accessibility: {
+    languageSelection: "Language selection",
+    indonesian: "Bahasa Indonesia",
+    english: "English",
   }
 };
 

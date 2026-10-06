@@ -105,7 +105,7 @@ async def render_single_batch_clip(
                     render_title_overlay_png,
                     title_text=display_title,
                     output_png_path=title_png_path,
-                    font_name=settings.title_font or settings.caption_font or "Outfit",
+                    font_name=settings.title_font or "Montserrat",
                     target_aspect_ratio=settings.aspect_ratio or "9:16",
                     font_size_preset=settings.title_font_size or settings.font_size or "medium",
                     text_case=settings.title_text_case or settings.text_case or "uppercase",
@@ -115,7 +115,7 @@ async def render_single_batch_clip(
                     canvas_h=canvas_h,
                     title_font_size_preset=settings.title_font_size or settings.font_size or "medium",
                     streamer_preset=settings.streamer_preset or "none",
-                    title_font_name=settings.title_font or settings.caption_font or "Outfit",
+                    title_font_name=settings.title_font or "Montserrat",
                     title_font_size_px=settings.title_font_size_px,
                     title_text_case=settings.title_text_case or settings.text_case or "uppercase"
                 )
@@ -143,7 +143,7 @@ async def render_single_batch_clip(
                 generate_ass_file,
                 words=words,
                 style_preset=settings.caption_style,
-                font_name=settings.caption_font or "Outfit",
+                font_name=settings.caption_font or "Inter",
                 output_ass_path=ass_path,
                 target_aspect_ratio=settings.aspect_ratio,
                 font_size_preset=settings.font_size,
@@ -159,7 +159,7 @@ async def render_single_batch_clip(
                 skip_title=skip_ass_title,
                 title_font_size_preset=settings.title_font_size or settings.font_size or "medium",
                 streamer_preset=settings.streamer_preset or "none",
-                title_font_name=settings.title_font or settings.caption_font or "Outfit",
+                title_font_name=settings.title_font or "Montserrat",
                 font_size_px=settings.font_size_px,
                 title_font_size_px=settings.title_font_size_px,
                 title_text_case=settings.title_text_case or settings.text_case or "uppercase"

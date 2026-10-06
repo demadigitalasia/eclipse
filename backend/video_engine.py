@@ -1245,7 +1245,9 @@ def split_text_and_emojis(text: str) -> List[Tuple[str, str]]:
 
 
 def get_font(font_name: str, size: int) -> ImageFont.FreeTypeFont:
-    """Resolves font with fallback to Montserrat or default font."""
+    """Resolves one of the supported ECLIPSE fonts with a safe fallback."""
+    if font_name not in {"Inter", "Montserrat"}:
+        font_name = "Inter"
     fonts_dir = str(FONTS_DIR)
     for ext in [".ttf", ".otf", ""]:
         p = os.path.join(fonts_dir, f"{font_name}{ext}")

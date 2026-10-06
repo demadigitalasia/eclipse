@@ -2,6 +2,9 @@ import React, { useRef, useState, useEffect } from 'react';
 import type { HeatmapPoint } from '../types';
 import { useLanguage } from '../locales';
 
+const HEATMAP_COLOR = '#a855f7';
+const ACTIVE_ZONE_COLOR = '#ff5e3a';
+
 interface HeatmapTimelineProps {
   duration: number;
   heatmap: HeatmapPoint[];
@@ -136,46 +139,64 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
   }
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+    <div className="retention-heatmap">
+      <div className="retention-heatmap-header">
+        <span className="retention-heatmap-title">
           {t.heatmap.title}
           {(!heatmap || heatmap.length === 0) && (
-            <span style={{
-              fontSize: '0.62rem',
-              fontWeight: 500,
-              color: 'rgba(255, 255, 255, 0.3)',
-              background: 'rgba(255, 255, 255, 0.06)',
-              padding: '0.1rem 0.4rem',
-              borderRadius: '4px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}>{t.heatmap.notAvailable}</span>
+            <span className="retention-heatmap-unavailable">{t.heatmap.notAvailable}</span>
           )}
         </span>
-        <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+        <span className="retention-heatmap-time">{formatTime(currentTime)} / {formatTime(duration)}</span>
       </div>
       
-      <div style={{ position: 'relative', background: 'rgba(7, 7, 7, 0.6)', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '2px', overflow: 'hidden' }}>
+      <div className="retention-heatmap-track">
         <svg
           ref={svgRef}
           width="100%"
           height={height}
-          style={{ cursor: 'pointer', display: 'block' }}
+          className="retention-heatmap-svg"
+          role="slider"
+          aria-label={t.heatmap.title}
+          aria-orientation="horizontal"
+          aria-valuemin={0}
+          aria-valuemax={duration}
+          aria-valuenow={Math.min(duration, Math.max(0, currentTime))}
+          aria-valuetext={formatTime(currentTime) + ' / ' + formatTime(duration)}
+          aria-disabled={duration <= 0}
+          tabIndex={duration > 0 ? 0 : -1}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onClick={handleClick}
+          onKeyDown={(event) => {
+            if (duration <= 0) return;
+            const seekStep = event.shiftKey ? 10 : 5;
+            if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              onSeek(Math.min(duration, currentTime + seekStep));
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+              event.preventDefault();
+              onSeek(Math.max(0, currentTime - seekStep));
+            } else if (event.key === 'Home') {
+              event.preventDefault();
+              onSeek(0);
+            } else if (event.key === 'End') {
+              event.preventDefault();
+              onSeek(duration);
+            }
+          }}
         >
           <defs>
             {/* Background Heatmap Gradient */}
             <linearGradient id="heatmapFillGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.0" />
+              <stop offset="0%" stopColor={HEATMAP_COLOR} stopOpacity="0.45" />
+              <stop offset="100%" stopColor={HEATMAP_COLOR} stopOpacity="0.0" />
             </linearGradient>
             
             {/* Active Range Pattern */}
             <linearGradient id="activeRangeGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="var(--secondary)" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="var(--secondary)" stopOpacity="0.05" />
+              <stop offset="0%" stopColor={ACTIVE_ZONE_COLOR} stopOpacity="0.2" />
+              <stop offset="100%" stopColor={ACTIVE_ZONE_COLOR} stopOpacity="0.04" />
             </linearGradient>
           </defs>
 
@@ -186,7 +207,7 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
               y1={height - 20}
               x2={svgWidth}
               y2={height - 20}
-              stroke="var(--border-color)"
+              stroke="rgba(168, 85, 247, 0.55)"
               strokeDasharray="4,4"
               strokeWidth="2"
             />
@@ -198,7 +219,7 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
               {/* Heatmap Area Fill */}
               <path d={fillPath} fill="url(#heatmapFillGradient)" />
               {/* Heatmap Stroke Line */}
-              <path d={strokePath} fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={strokePath} fill="none" stroke={HEATMAP_COLOR} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </>
           )}
 
@@ -211,7 +232,7 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
                 width={activeClipWidth}
                 height={chartHeight + 10}
                 fill="url(#activeRangeGrad)"
-                stroke="var(--secondary)"
+                stroke={ACTIVE_ZONE_COLOR}
                 strokeWidth="1.5"
                 strokeDasharray="3,3"
                 rx="4"
@@ -248,7 +269,7 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
                 y1="0"
                 x2={hoverX}
                 y2={height}
-                stroke="rgba(255, 255, 255, 0.25)"
+                stroke="rgba(168, 85, 247, 0.4)"
                 strokeWidth="1"
                 strokeDasharray="2,2"
               />
@@ -256,8 +277,8 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
                 cx={hoverX}
                 cy={coords.length > 0 ? coords[Math.floor((hoverX / svgWidth) * (coords.length - 1))]?.y || height / 2 : height / 2}
                 r="5"
-                fill="var(--secondary)"
-                style={{ filter: 'drop-shadow(0 0 3px var(--secondary-glow))' }}
+                fill={ACTIVE_ZONE_COLOR}
+                style={{ filter: 'drop-shadow(0 0 3px rgba(255, 94, 58, 0.4))' }}
               />
             </g>
           )}
@@ -266,27 +287,12 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
         {/* Hover Tooltip HTML positioning */}
         {hoverX !== null && (
           <div
-            style={{
-              position: 'absolute',
-              top: '4px',
-              left: `${Math.min(svgWidth - 90, Math.max(10, hoverX - 45))}px`,
-              background: 'rgba(23, 23, 23, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px',
-              padding: '2px 6px',
-              fontSize: '0.65rem',
-              color: 'var(--text-primary)',
-              pointerEvents: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-              zIndex: 10,
-            }}
+            className="retention-heatmap-tooltip"
+            style={{ left: `${Math.min(svgWidth - 90, Math.max(10, hoverX - 45))}px` }}
           >
             <span style={{ fontWeight: 'bold' }}>{formatTime(hoverTime)}</span>
             {heatmap && heatmap.length > 0 && (
-              <span style={{ color: 'var(--secondary)', fontSize: '0.6rem' }}>
+              <span style={{ color: HEATMAP_COLOR, fontSize: '0.6rem' }}>
                 {t.heatmap.interest(Math.round(hoverValue * 100))}
               </span>
             )}
@@ -295,17 +301,17 @@ export const HeatmapTimeline: React.FC<HeatmapTimelineProps> = ({
       </div>
       
       {/* Timeline legends */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+      <div className="retention-heatmap-legend">
         <span>00:00</span>
         {heatmap && heatmap.length > 0 && (
-          <span style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)' }}></span>
+          <span className="retention-heatmap-legend-items">
+            <span className="retention-heatmap-legend-item">
+              <span className="retention-heatmap-legend-dot is-peak"></span>
               {t.heatmap.mostReplayed}
             </span>
             {activeClip && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '2px', border: '1px dashed var(--secondary)', background: 'rgba(148, 148, 148, 0.1)' }}></span>
+              <span className="retention-heatmap-legend-item">
+                <span className="retention-heatmap-legend-dot is-active-zone"></span>
                 {t.heatmap.activeClipZone}
               </span>
             )}

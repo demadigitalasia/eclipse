@@ -44,7 +44,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
   const [titleText, setTitleText] = useState<string>('');
   const [titlePosition, setTitlePosition] = useState<TitlePosition>('auto');
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('viral_pop');
-  const [captionFont, setCaptionFont] = useState<CaptionFont>('Outfit');
+  const [captionFont, setCaptionFont] = useState<CaptionFont>('Inter');
   const [fontSize, setFontSize] = useState<FontSizeOption>('medium');
   const [titleFontSize, setTitleFontSize] = useState<FontSizeOption>('medium');
   const [textCase, setTextCase] = useState<TextCaseOption>('uppercase');
@@ -123,14 +123,14 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="studio-modal-card" onClick={e => e.stopPropagation()}>
+      <div className="studio-modal-card" role="dialog" aria-modal="true" aria-labelledby="clip-studio-modal-title" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="studio-modal-header">
           <div className="studio-header-title">
             <div className="studio-icon-badge"></div>
             <div>
               <div className="studio-title-row">
-                <h2>{t.studio.heading}</h2>
+                <h2 id="clip-studio-modal-title">{t.studio.heading}</h2>
                 <span className="pro-badge">PRO</span>
               </div>
               <p className="studio-header-desc">
@@ -138,7 +138,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
               </p>
             </div>
           </div>
-          <button className="studio-close-btn" onClick={onClose} disabled={isRendering}>
+          <button className="studio-close-btn" onClick={onClose} disabled={isRendering} aria-label={t.header.closeBtn} title={t.header.closeBtn}>
 
           </button>
         </div>
@@ -200,8 +200,8 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                   onClick={() => setAspectRatio('16:9_landscape')}
                 >
                   <div className="aspect-icon-box ratio-169landscape"></div>
-                  <span className="aspect-name">{t.studio.ratio169Landscape || '16:9 Landscape'}</span>
-                  <span className="aspect-sub">{t.studio.ratio169LandscapeSub || 'True 1920×1080'}</span>
+                  <span className="aspect-name">{t.studio.ratio169Landscape}</span>
+                  <span className="aspect-sub">{t.studio.ratio169LandscapeSub}</span>
                 </button>
               </div>
 
@@ -246,14 +246,14 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                   {enableFaceTracking && streamerPreset === 'none' && (
                     <div className="horizontal-framing-selector" style={{ marginTop: '0.65rem', paddingLeft: '1.6rem' }}>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
-                        {t.studio.horizontalFramingLabel || 'Horizontal Framing / Focal Point:'}
+                        {t.studio.horizontalFramingLabel}
                       </div>
                       <div className="pill-group framing-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                         {[
-                          { id: 'auto', label: t.studio.framingAuto || ' AI Auto' },
-                          { id: 'center', label: t.studio.framingCenter || ' Center (50%)' },
-                          { id: 'left', label: t.studio.framingLeft || ' Left Focus (35%)' },
-                          { id: 'right', label: t.studio.framingRight || ' Right Focus (65%)' },
+                          { id: 'auto', label: t.studio.framingAuto },
+                          { id: 'center', label: t.studio.framingCenter },
+                          { id: 'left', label: t.studio.framingLeft },
+                          { id: 'right', label: t.studio.framingRight },
                         ].map(opt => (
                           <button
                             key={opt.id}
@@ -305,7 +305,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                 <div style={{ marginTop: '0.85rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      {t.studio.facecamPositionLabel || 'Facecam Position in Source:'}
+                      {t.studio.facecamPositionLabel}
                     </span>
                     <span style={{ fontSize: '0.72rem', color: '#b1b1b1', background: 'rgba(177, 177, 177, 0.12)', border: '1px solid rgba(177, 177, 177, 0.25)', padding: '0.1rem 0.45rem', borderRadius: '4px' }}>
                       {facecamPosition === 'auto' ? 'AI AUTO-DETECT' : facecamPosition.toUpperCase().replace('_', '-')}
@@ -313,12 +313,12 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                   </div>
                   <div className="toggle-pill-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     {[
-                      { id: 'auto', label: t.studio.facecamAuto || 'Auto (AI Detect)' },
-                      { id: 'bottom_right', label: t.studio.facecamBottomRight || 'Bottom-Right' },
-                      { id: 'top_right', label: t.studio.facecamTopRight || 'Top-Right' },
-                      { id: 'bottom_left', label: t.studio.facecamBottomLeft || 'Bottom-Left' },
-                      { id: 'top_left', label: t.studio.facecamTopLeft || 'Top-Left' },
-                      { id: 'center', label: t.studio.facecamCenter || 'Center' },
+                      { id: 'auto', label: t.studio.facecamAuto },
+                      { id: 'bottom_right', label: t.studio.facecamBottomRight },
+                      { id: 'top_right', label: t.studio.facecamTopRight },
+                      { id: 'bottom_left', label: t.studio.facecamBottomLeft },
+                      { id: 'top_left', label: t.studio.facecamTopLeft },
+                      { id: 'center', label: t.studio.facecamCenter },
                     ].map(opt => (
                       <button
                         key={opt.id}
@@ -353,17 +353,18 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                 />
                 <select
                   className="studio-select"
+                  aria-label={t.studio.titleVisibilityLabel}
                   value={titlePosition}
                   onChange={e => setTitlePosition(e.target.value as TitlePosition)}
                 >
-                  <option value="auto">Top of Content Edge</option>
-                  <option value="none">No Title Banner</option>
+                  <option value="auto">{t.studio.titleVisible}</option>
+                  <option value="none">{t.studio.titleDisabled}</option>
                 </select>
               </div>
 
               {titlePosition !== 'none' && (
                 <div className="studio-sub-toggle" style={{ marginTop: '0.65rem' }}>
-                  <span className="sub-toggle-label">{t.studio.titleFontSize || "Title Text Size:"}</span>
+                  <span className="sub-toggle-label">{t.studio.titleFontSize}</span>
                   <div className="toggle-pill-group">
                     <button
                       type="button"
@@ -492,18 +493,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                   <div className="studio-sub-toggle" style={{ marginTop: '0.75rem' }}>
                     <span className="sub-toggle-label">{t.studio.fontFamily}</span>
                     <div className="toggle-pill-group" style={{ flexWrap: 'wrap' }}>
-                      {(
-                        [
-                          'Outfit',
-                          'Montserrat',
-                          'Inter',
-                          'Impact',
-                          'Bebas Neue',
-                          'Anton',
-                          'Poppins',
-                          'Arial Black',
-                        ] as CaptionFont[]
-                      ).map(font => (
+                      {(['Inter', 'Montserrat'] as CaptionFont[]).map(font => (
                         <button
                           key={font}
                           type="button"
@@ -728,7 +718,7 @@ export const ClipStudioModal: React.FC<ClipStudioModalProps> = ({
                         border: 'none',
                       }}
                     >
-                      {formatTitlePreview(titleText || 'YOUR VIRAL HOOK TITLE', textCase)}
+                      {formatTitlePreview(titleText || t.studio.previewSampleTitle, textCase)}
                     </span>
                   </div>
                 )}

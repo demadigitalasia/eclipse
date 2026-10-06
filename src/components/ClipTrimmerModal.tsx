@@ -79,7 +79,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
 
   const [adjustedStart, setAdjustedStart] = useState<number>(origStart);
   const [adjustedEnd, setAdjustedEnd] = useState<number>(origEnd);
-  const [clipTitle, setClipTitle] = useState<string>(clip?.title_suggestion || clip?.title || 'Clip');
+  const [clipTitle, setClipTitle] = useState<string>(clip?.title_suggestion || clip?.title || t.trimmer.defaultClipTitle);
   const [startInputVal, setStartInputVal] = useState<string>(formatSeconds(origStart));
   const [endInputVal, setEndInputVal] = useState<string>(formatSeconds(origEnd));
   const [currentTime, setCurrentTime] = useState<number>(origStart);
@@ -128,7 +128,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
     if (clip) {
       setAdjustedStart(clip.start_time);
       setAdjustedEnd(clip.end_time);
-      setClipTitle(clip.title_suggestion || clip.title || 'Clip');
+      setClipTitle(clip.title_suggestion || clip.title || t.trimmer.defaultClipTitle);
       setStartInputVal(formatSeconds(clip.start_time));
       setEndInputVal(formatSeconds(clip.end_time));
       setCurrentTime(clip.start_time);
@@ -562,8 +562,8 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
     key_quotes: [],
     transcript: '',
     ...(clip || {}),
-    title: clipTitle.trim() || clip?.title || 'Clip',
-    title_suggestion: clipTitle.trim() || clip?.title_suggestion || 'Clip',
+    title: clipTitle.trim() || clip?.title || t.trimmer.defaultClipTitle,
+    title_suggestion: clipTitle.trim() || clip?.title_suggestion || t.trimmer.defaultClipTitle,
     start_time: adjustedStart,
     end_time: adjustedEnd,
   });
@@ -588,6 +588,9 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
     <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 10000, padding: '1rem' }}>
       <div
         className="studio-modal-card clip-trimmer-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="clip-trimmer-modal-title"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
@@ -608,7 +611,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
             </div>
             <div>
               <div className="studio-title-row" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <h2 style={{ fontSize: '1.12rem', margin: 0 }}>{t.trimmer.modalTitle}</h2>
+                <h2 id="clip-trimmer-modal-title" style={{ fontSize: '1.12rem', margin: 0 }}>{t.trimmer.modalTitle}</h2>
                 <span className="status-pill active" style={{ fontSize: '0.68rem', padding: '0.15rem 0.55rem' }}>
                   ±2 min Context Limit
                 </span>
@@ -622,6 +625,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
             className="studio-close-btn"
             onClick={onClose}
             title={t.trimmer.closeBtn}
+            aria-label={t.trimmer.closeBtn}
             style={{ cursor: 'pointer' }}
           >
 
@@ -642,7 +646,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
               value={clipTitle}
               disabled={isDownloading}
               onChange={(e) => setClipTitle(e.target.value)}
-              placeholder="Clip title"
+              placeholder={t.trimmer.clipTitlePlaceholder}
               style={{ flex: 1, padding: '0.35rem 0.75rem', fontSize: '0.82rem' }}
             />
           </div>
@@ -694,7 +698,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 1.2s linear infinite' }}>
                         <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="8"></circle>
                       </svg>
-                      <span>Loading preview player...</span>
+                      <span>{t.trimmer.loadingPreviewPlayer}</span>
                     </div>
                   </div>
                 )}
@@ -874,11 +878,11 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
 
                 {/* Real-time Time / Length badge */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(0, 0, 0, 0.35)', padding: '0.2rem 0.5rem', borderRadius: '5px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                  <span style={{ color: '#b1b1b1', fontWeight: 700, fontFamily: 'monospace', fontSize: '0.78rem' }}>
+                  <span style={{ color: '#b1b1b1', fontWeight: 700, fontFamily: 'Inter', fontSize: '0.78rem' }}>
                     {formatSeconds(currentTime)}
                   </span>
                   <span style={{ color: 'rgba(255, 255, 255, 0.25)', fontSize: '0.68rem' }}>/</span>
-                  <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '0.72rem' }}>
+                  <span style={{ color: 'var(--text-muted)', fontFamily: 'Inter', fontSize: '0.72rem' }}>
                     {formatSeconds(adjustedEnd - adjustedStart)}
                   </span>
                 </div>
@@ -1036,7 +1040,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                   {t.trimmer.outroContextZone}
                 </span>
               </div>
-              <span style={{ fontFamily: 'monospace', color: 'rgba(255, 255, 255, 0.4)' }}>
+              <span style={{ fontFamily: 'Inter', color: 'rgba(255, 255, 255, 0.4)' }}>
                 {formatSeconds(minTimelineStart)} — {formatSeconds(maxTimelineEnd)}
               </span>
             </div>
@@ -1144,7 +1148,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                   borderRadius: '4px',
                   touchAction: 'none'
                 }}
-                title="Drag to slide entire clip window"
+                title={t.trimmer.dragClipWindow}
               />
 
               {/* Draggable Start Handle */}
@@ -1183,7 +1187,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                   borderRadius: '3px',
                   whiteSpace: 'nowrap',
                   pointerEvents: 'none',
-                  fontFamily: 'monospace'
+                  fontFamily: 'Inter'
                 }}>
                   {formatSeconds(adjustedStart)}
                 </div>
@@ -1225,7 +1229,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                   borderRadius: '3px',
                   whiteSpace: 'nowrap',
                   pointerEvents: 'none',
-                  fontFamily: 'monospace'
+                  fontFamily: 'Inter'
                 }}>
                   {formatSeconds(adjustedEnd)}
                 </div>
@@ -1327,7 +1331,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                         setStartInputVal(formatSeconds(adjustedStart));
                       }
                     }}
-                    style={{ width: '80px', padding: '0.2rem 0.4rem', fontSize: '0.76rem', fontFamily: 'monospace', textAlign: 'center' }}
+                    style={{ width: '80px', padding: '0.2rem 0.4rem', fontSize: '0.76rem', fontFamily: 'Inter', textAlign: 'center' }}
                   />
                 </div>
               </div>
@@ -1382,7 +1386,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                         setEndInputVal(formatSeconds(adjustedEnd));
                       }
                     }}
-                    style={{ width: '80px', padding: '0.2rem 0.4rem', fontSize: '0.76rem', fontFamily: 'monospace', textAlign: 'center' }}
+                    style={{ width: '80px', padding: '0.2rem 0.4rem', fontSize: '0.76rem', fontFamily: 'Inter', textAlign: 'center' }}
                   />
                 </div>
               </div>
@@ -1440,7 +1444,7 @@ export const ClipTrimmerModal: React.FC<ClipTrimmerModalProps> = ({
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: 1, minWidth: 0 }}>
-                            <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: inAiPick ? '#d1d1d1' : inAdjusted ? '#b1b1b1' : 'rgba(255, 255, 255, 0.4)', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontFamily: 'Inter', fontSize: '0.68rem', color: inAiPick ? '#d1d1d1' : inAdjusted ? '#b1b1b1' : 'rgba(255, 255, 255, 0.4)', whiteSpace: 'nowrap' }}>
                               {formatSeconds(line.start)}
                             </span>
                             <span style={{ color: inAdjusted ? '#ffffff' : 'rgba(255, 255, 255, 0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
