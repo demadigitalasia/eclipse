@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLanguage } from '../locales';
 import { resilientFetch } from '../utils/api';
+import { getAdminHeaders } from '../utils/admin';
 import type {
   ViralClip,
   RenderSettings,
@@ -773,7 +774,7 @@ export const ClipStudioSection: React.FC<ClipStudioSectionProps> = ({
     setIsClearingTemp(true);
     setTempClearMsg('');
     try {
-      const resp = await fetch('/api/clear-temp', { method: 'POST' });
+      const resp = await fetch('/api/clear-temp', { method: 'POST', headers: getAdminHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setTempClearMsg(` ${language === 'id' ? t.studio.tempCleared : (data.message || t.studio.tempCleared)}`);

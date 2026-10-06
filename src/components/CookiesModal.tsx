@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../locales';
 import { resilientFetch } from '../utils/api';
+import { getAdminHeaders } from '../utils/admin';
 
 interface CookiesModalProps {
   isOpen: boolean;
@@ -99,7 +100,7 @@ export const CookiesModal: React.FC<CookiesModalProps> = ({
     try {
       const res = await fetch('/api/cookies', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
         body: JSON.stringify({ cookies_content: cookieText }),
       });
       const data = await res.json();
@@ -122,6 +123,7 @@ export const CookiesModal: React.FC<CookiesModalProps> = ({
     try {
       const res = await fetch('/api/cookies', {
         method: 'DELETE',
+        headers: getAdminHeaders(),
       });
       const data = await res.json();
       if (res.ok && data.success) {

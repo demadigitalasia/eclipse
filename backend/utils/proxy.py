@@ -32,7 +32,16 @@ def mask_proxy_url(proxy_url: Optional[str]) -> str:
 
 
 def get_proxy_url() -> Optional[str]:
-    """Retrieves proxy URL from environment variables or synthesizes from Webshare credentials."""
+    """Proxy URL priority: Settings panel, then environment variables, then synthesized Webshare credentials."""
+    try:
+        from backend.utils.app_settings import get_settings_proxy_url
+
+        settings_proxy = get_settings_proxy_url()
+        if settings_proxy:
+            return settings_proxy
+    except Exception as exc:
+        logger.warning(f"Failed reading proxy URL from settings file: {exc}")
+
     proxy = (
         os.environ.get("PROXY_URL")
         or os.environ.get("WEBSHARE_PROXY")

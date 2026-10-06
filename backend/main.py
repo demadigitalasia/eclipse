@@ -13,6 +13,7 @@ from backend.routers import (
     downloads_router,
     media_router,
     render_router,
+    settings_router,
     system_router,
 )
 # Re-exports for backwards compatibility
@@ -92,6 +93,7 @@ app.include_router(media_router)
 app.include_router(cookies_router)
 app.include_router(downloads_router)
 app.include_router(system_router)
+app.include_router(settings_router)
 
 logger.info("ECLIPSE backend routers mounted successfully.")
 

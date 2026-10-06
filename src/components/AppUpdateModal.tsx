@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../locales';
+import { getAdminHeaders } from '../utils/admin';
 
 export interface VersionInfo {
   current_commit: string;
@@ -136,7 +137,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
     try {
       const res = await fetch('/api/system/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
       });
       const data = await res.json();
       if (!res.ok) {
@@ -155,7 +156,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ isOpen, onClose 
     try {
       await fetch('/api/system/restart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
       });
       startPollingReconnect();
     } catch {

@@ -3,10 +3,12 @@ import { HeatmapTimeline } from './components/HeatmapTimeline';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { ClipStudioSection } from './components/ClipStudioSection';
 import { CookiesModal } from './components/CookiesModal';
+import { SettingsModal } from './components/SettingsModal';
 import { ClipTrimmerModal } from './components/ClipTrimmerModal';
 import { AppUpdateModal } from './components/AppUpdateModal';
 import { UserGuideModal } from './components/UserGuideModal';
 import { resilientFetch } from './utils/api';
+import { getAdminHeaders } from './utils/admin';
 import { useLanguage } from './locales';
 import type { AnalyzeResponse, ViralClip, RenderSettings, BatchRenderProgress } from './types';
 
@@ -45,7 +47,10 @@ export default function App() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('cheat_clip_gemini_api_key') || '');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isCookiesModalOpen, setIsCookiesModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
+  const [isHeaderMoreOpen, setIsHeaderMoreOpen] = useState(false);
+  const headerMoreRef = useRef<HTMLDivElement | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [hasCookies, setHasCookies] = useState(false);
   const [isDownloadingRaw, setIsDownloadingRaw] = useState(false);
@@ -150,6 +155,29 @@ export default function App() {
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isStudioWorkspaceOpen]);
+
+  useEffect(() => {
+    if (!isHeaderMoreOpen) return;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !headerMoreRef.current?.contains(event.target)) {
+        setIsHeaderMoreOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsHeaderMoreOpen(false);
+        headerMoreRef.current?.querySelector('button')?.focus();
+      }
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isHeaderMoreOpen]);
 
   // Active timer during loading so the user always sees live activity
   useEffect(() => {
@@ -498,7 +526,7 @@ export default function App() {
     if (isClearingGlobalTemp) return;
     setIsClearingGlobalTemp(true);
     try {
-      const resp = await fetch('/api/clear-temp', { method: 'POST' });
+      const resp = await fetch('/api/clear-temp', { method: 'POST', headers: getAdminHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setToastMessage(data.message || t.header.clearedTempSuccess);
@@ -2135,65 +2163,82 @@ Transcript:
             <img className="eclipse-main-logo" src="/eclipse-logo-main.png" alt="ECLIPSE — Dema Digital Asia" />
           </h1>
         </div>
-        <div className="header-nav" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          <button
-            type="button"
-            className="user-guide-open-btn"
-            onClick={() => setIsUserGuideOpen(true)}
-            aria-haspopup="dialog"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.75 5.5A2.75 2.75 0 0 1 7.5 2.75h11.75v17H7.5a2.75 2.75 0 0 0-2.75 2.75zm0 0v17M8 6h7m-7 4h7m-7 4h5" /></svg>
-            <span>{t.guide.buttonLabel}</span>
-          </button>
-          <button
-            type="button"
-            className="cookie-header-btn"
-            onClick={() => setIsCookiesModalOpen(true)}
-            style={{
-              padding: '0.45rem 0.85rem',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: '8px',
-              background: hasCookies ? 'rgba(172, 172, 172, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-              border: hasCookies ? '1px solid rgba(172, 172, 172, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
-              color: hasCookies ? '#c4c4c4' : 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            title={hasCookies ? t.header.cookiesTooltipActive : t.header.cookiesTooltipSetup}
-          >
-            <span> {t.header.cookiesBtn}</span>
-            <span style={{ fontSize: '0.7rem', opacity: 0.85 }}>
-              {hasCookies ? t.header.cookiesStatusActive : t.header.cookiesStatusSetup}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="cookie-header-btn"
-            onClick={() => setShowGlobalClearModal(true)}
-            disabled={isClearingGlobalTemp}
-            style={{
-              padding: '0.45rem 0.85rem',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              cursor: isClearingGlobalTemp ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            title={t.header.clearTempTooltip}
-          >
-            <span> {isClearingGlobalTemp ? t.header.clearingTempBtn : t.header.clearTempBtn}</span>
-          </button>
-          <LanguageSwitcher />
+        <div className="header-nav">
+          <div className="header-nav-primary">
+            <button
+              type="button"
+              className="header-nav-action"
+              onClick={() => setIsUserGuideOpen(true)}
+              aria-haspopup="dialog"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.75 5.5A2.75 2.75 0 0 1 7.5 2.75h11.75v17H7.5a2.75 2.75 0 0 0-2.75 2.75zm0 0v17M8 6h7m-7 4h7m-7 4h5" /></svg>
+              <span>{t.guide.buttonLabel}</span>
+            </button>
+            <button
+              type="button"
+              className="header-nav-action"
+              onClick={() => setIsSettingsModalOpen(true)}
+              title={t.header.settingsTooltip}
+              aria-haspopup="dialog"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9M13 4v6M9 14v6" /></svg>
+              <span>{t.header.settingsBtn}</span>
+            </button>
+          </div>
+          <div className="header-nav-secondary">
+            <div className="header-more-wrap" ref={headerMoreRef}>
+              <button
+                type="button"
+                className="header-more-trigger"
+                onClick={() => setIsHeaderMoreOpen(open => !open)}
+                aria-label={t.header.moreActionsBtn}
+                aria-expanded={isHeaderMoreOpen}
+                aria-controls="header-more-panel"
+                title={t.header.moreActionsTooltip}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.35" /><circle cx="12" cy="12" r="1.35" /><circle cx="19" cy="12" r="1.35" /></svg>
+              </button>
+              {isHeaderMoreOpen && (
+                <div id="header-more-panel" className="header-more-panel" role="group" aria-label={t.header.moreActionsBtn}>
+                  <p className="header-more-heading">{t.header.maintenanceHeading}</p>
+                  <button
+                    type="button"
+                    className="header-more-item"
+                    onClick={() => {
+                      setIsHeaderMoreOpen(false);
+                      setIsCookiesModalOpen(true);
+                    }}
+                    title={hasCookies ? t.header.cookiesTooltipActive : t.header.cookiesTooltipSetup}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.75A2.75 2.75 0 0 1 7.75 2H20v16H7.75A2.75 2.75 0 0 0 5 20.75zM5 4.75v16M8.5 6.5h8M8.5 10h8" /></svg>
+                    <span className="header-more-item-copy">
+                      <strong>{t.header.cookiesBtn}</strong>
+                      <small>{hasCookies ? t.header.cookiesStatusActive : t.header.cookiesStatusSetup}</small>
+                    </span>
+                    <span className={`header-more-status-dot${hasCookies ? ' is-ready' : ''}`} aria-hidden="true" />
+                  </button>
+                  <div className="header-more-separator" />
+                  <button
+                    type="button"
+                    className="header-more-item is-destructive"
+                    onClick={() => {
+                      setIsHeaderMoreOpen(false);
+                      setShowGlobalClearModal(true);
+                    }}
+                    disabled={isClearingGlobalTemp}
+                    title={t.header.clearTempTooltip}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m4 4v5m4-5v5" /></svg>
+                    <span className="header-more-item-copy">
+                      <strong>{isClearingGlobalTemp ? t.header.clearingTempBtn : t.header.clearTempBtn}</strong>
+                      <small>{t.header.clearTempTooltip}</small>
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
 
@@ -4327,6 +4372,11 @@ Transcript:
         isOpen={isCookiesModalOpen}
         onClose={() => setIsCookiesModalOpen(false)}
         onCookieStatusChange={setHasCookies}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
       />
 
       {/* App Update & Restart Modal */}

@@ -235,7 +235,16 @@ def fetch_video_metadata(url: str, custom_proxy: Optional[str] = None):
 _supadata_key_index = 0
 
 def get_supadata_keys() -> List[str]:
-    """Retrieves list of Supadata API keys from environment variables."""
+    """Retrieves Supadata API keys from the Settings panel first, then environment variables."""
+    try:
+        from backend.utils.app_settings import get_settings_supadata_keys
+
+        settings_keys = get_settings_supadata_keys()
+        if settings_keys:
+            return settings_keys
+    except Exception as exc:  # Settings file is optional; env vars remain the fallback
+        logger.warning(f"Failed reading Supadata keys from settings file: {exc}")
+
     raw = os.environ.get("SUPADATA_API_KEYS") or os.environ.get("SUPADATA_API_KEY") or ""
     keys = re.findall(r'sd_[a-zA-Z0-9]+', raw)
     if not keys:

@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.config import (
     COOKIES_PATH,
@@ -11,6 +11,7 @@ from backend.config import (
     logger,
 )
 from backend.schemas.downloads import CookiesSaveRequest
+from backend.utils.admin_auth import verify_admin_if_configured
 
 router = APIRouter(tags=["Cookies"])
 
@@ -98,7 +99,10 @@ def normalize_to_netscape(raw_content: str) -> str:
 
 
 @router.post("/api/cookies")
-async def save_youtube_cookies(request: Request):
+async def save_youtube_cookies(
+    request: Request,
+    authorized: bool = Depends(verify_admin_if_configured),
+):
     content = ""
     # Try reading as JSON first
     try:
@@ -176,7 +180,7 @@ def get_youtube_cookies_status():
 
 
 @router.delete("/api/cookies")
-def delete_youtube_cookies():
+def delete_youtube_cookies(authorized: bool = Depends(verify_admin_if_configured)):
     for p in [COOKIES_PATH, ROOT_COOKIES_PATH]:
         if p.exists():
             try:

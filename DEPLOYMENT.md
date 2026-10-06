@@ -8,6 +8,10 @@
 
 The repository includes `vercel.json.example`. After the backend host provides its public HTTPS URL, replace `YOUR-BACKEND-DOMAIN` and save the file as `vercel.json` at the repository root. The rewrite proxies `/api/:path*` to the matching path on that external API origin; the second rewrite supports SPA routes.
 
+### Coolify frontend option
+
+For a same-origin Coolify deployment, build the frontend with `Dockerfile.frontend` and expose port `80`. `nginx.frontend.conf` serves the built Vite SPA and proxies `/api/*` to the backend container at `eclipse-backend:8000`. Both containers must share Coolify's `coolify` Docker network, and the backend container needs the internal network name `eclipse-backend`.
+
 ## Backend image
 
 Build the API image from the repository root:
@@ -28,6 +32,8 @@ docker run --rm -p 127.0.0.1:8000:8000 \
 The image uses `ECLIPSE_DATA_DIR=/var/lib/eclipse`; the named volume keeps uploads, temporary files, exports, custom fonts, and cookies across container restarts. Keep this as a single backend instance: render-job state is still in process memory and is not shared between replicas.
 
 Set secrets through the host's environment settings, not in the image or Git. Relevant settings include `GEMINI_API_KEY`, `SUPADATA_API_KEYS`, `ALLOWED_ORIGINS`, and an administrative key.
+
+For the web Settings panel, configure a strong `ADMIN_API_KEY` in the backend's environment before opening the panel. The key is required for `/api/settings`; it also protects cookie save/delete and the existing administrative actions when configured. The key itself remains in the host environment. Supadata keys and proxy settings entered through the panel are stored in `settings.json` under `ECLIPSE_DATA_DIR` (so the persistent volume must remain attached) and take precedence over their corresponding environment variables. The panel sends the administrator key from browser `localStorage` in request headers; never reuse it as a public or shared-user credential.
 
 ## Production gate
 

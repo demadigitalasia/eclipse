@@ -299,6 +299,20 @@ def get_yt_dlp_cookies_args() -> List[str]:
     return []
 
 
+def _get_download_proxy_url() -> Optional[str]:
+    """Resolves the configured download proxy without hard-failing downloads."""
+    try:
+        try:
+            from backend.utils.proxy import get_proxy_url
+        except ImportError:
+            from utils.proxy import get_proxy_url
+
+        return get_proxy_url()
+    except Exception as exc:
+        logger.warning(f"Failed resolving download proxy: {exc}")
+        return None
+
+
 def get_yt_dlp_base_cmd(include_cookies: bool = True) -> List[str]:
     """
     Returns base command for yt-dlp with JavaScript runtime, player extractor args, and cookies.
@@ -329,6 +343,13 @@ def get_yt_dlp_base_cmd(include_cookies: bool = True) -> List[str]:
         "--extractor-args", "youtube:player_client=default,web_embedded,ios",
         "--force-ipv4"
     ])
+
+    # Route downloads through the configured proxy (Settings panel or env) so
+    # datacenter IPs flagged by YouTube bot verification can still fetch media.
+    proxy_url = _get_download_proxy_url()
+    if proxy_url:
+        logger.info("Using configured proxy for yt-dlp downloads.")
+        cmd.extend(["--proxy", proxy_url])
 
     if include_cookies:
         eff = get_effective_cookies_path()

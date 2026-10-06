@@ -3,6 +3,7 @@ from backend.routers.cookies import router as cookies_router
 from backend.routers.downloads import router as downloads_router
 from backend.routers.media import router as media_router
 from backend.routers.render import router as render_router
+from backend.routers.settings import router as settings_router
 from backend.routers.system import router as system_router
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "downloads_router",
     "media_router",
     "render_router",
+    "settings_router",
     "system_router",
 ]
