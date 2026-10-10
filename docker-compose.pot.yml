@@ -1,17 +1,31 @@
-# ECLIPSE backend + bgutil PO-token provider stack.
+# ECLIPSE deploy stack for Coolify (Docker Compose resource).
 #
-# Use this as a Coolify "Docker Compose" resource (or `docker compose -f
-# docker-compose.pot.yml up -d`) when YouTube bot verification still blocks
-# downloads on a datacenter IP.
+# Services:
+#   frontend         -> nginx serving the Vite build, proxies /api to the backend
+#   eclipse-backend  -> FastAPI (ingest, Gemini analysis, FFmpeg render)
+#   bgutil-provider  -> YouTube PO-token provider for yt-dlp
 #
-# Set these in Coolify (or a local .env next to this file) — never commit them:
-#   ADMIN_API_KEY, GEMINI_API_KEY, SUPADATA_API_KEYS, ALLOWED_ORIGINS
-#   PROXY_URL (residential/mobile proxy, e.g. http://user:pass@host:port)
+# Set these as environment variables on the Coolify resource (never commit them):
+#   ALLOWED_ORIGINS, ECLIPSE_MASTER_KEY (optional)
+#   ECLIPSE_STORAGE_BACKEND, R2_ACCOUNT_ID, R2_BUCKET_NAME,
+#   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+#   ECLIPSE_EGRESS_PROXY (optional residential/mobile proxy)
 #
-# The backend automatically points yt-dlp at the provider via
-# YTDLP_POT_PROVIDER_URL below. All YouTube traffic still goes through PROXY_URL.
+# The backend points yt-dlp at bgutil-provider automatically.
 
 services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - SERVICE_FQDN_FRONTEND_80=eclipse.demadigitalasia.com
+    expose:
+      - "80"
+    depends_on:
+      - eclipse-backend
+
   eclipse-backend:
     build:
       context: .
@@ -19,17 +33,23 @@ services:
     restart: unless-stopped
     environment:
       ECLIPSE_DATA_DIR: /var/lib/eclipse
-      PORT: "8000"
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      SUPADATA_API_KEYS: ${SUPADATA_API_KEYS:-}
-      PROXY_URL: ${PROXY_URL:-}
+      ECLIPSE_PORT: "8000"
+      ECLIPSE_ENV: ${ECLIPSE_ENV:-production}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://eclipse.demadigitalasia.com}
+      ECLIPSE_MASTER_KEY: ${ECLIPSE_MASTER_KEY:-}
+      ECLIPSE_STORAGE_BACKEND: ${ECLIPSE_STORAGE_BACKEND:-r2}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_PREFIX: ${R2_PREFIX:-eclipse}
+      R2_PRESIGNED_URL_TTL_SECONDS: ${R2_PRESIGNED_URL_TTL_SECONDS:-300}
+      ECLIPSE_EGRESS_PROXY: ${ECLIPSE_EGRESS_PROXY:-}
       YTDLP_POT_PROVIDER_URL: http://bgutil-provider:4416
     volumes:
       - eclipse-data:/var/lib/eclipse
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     depends_on:
       - bgutil-provider
 
@@ -37,9 +57,6 @@ services:
     image: brainicism/bgutil-ytdlp-pot-provider:latest
     restart: unless-stopped
     init: true
-    # Only needed if PROXY_URL points at a proxy running on the Docker host.
-    # extra_hosts:
-    #   - "host.docker.internal:host-gateway"
     expose:
       - "4416"
 
