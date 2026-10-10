@@ -26,6 +26,28 @@ logger = logging.getLogger(__name__)
 YOUTUBE_JS_RUNTIME = {"node": {}}
 
 
+def _pot_enabled() -> bool:
+    """True when a bgutil PO-token provider URL is configured for the server."""
+    return bool(os.environ.get("YTDLP_POT_PROVIDER_URL", "").strip())
+
+
+def _extractor_args(player_clients: list[str]) -> dict:
+    """YouTube extractor args, wiring the bgutil PO-token provider when set.
+
+    The PO-token provider lets yt-dlp satisfy YouTube's "Sign in to confirm
+    you're not a bot" check from datacenter IPs, without per-user cookies.
+    """
+    args: dict = {"youtube": {"player_client": player_clients}}
+    url = os.environ.get("YTDLP_POT_PROVIDER_URL", "").strip()
+    if url:
+        # `web` becomes usable once GVS/player tokens are available.
+        if "web" not in player_clients:
+            player_clients = ["web", *player_clients]
+            args["youtube"] = {"player_client": player_clients}
+        args["youtubepot-bgutilhttp"] = {"base_url": url}
+    return args
+
+
 def job_dir(data_dir: str, job_id: str) -> str:
     path = os.path.join(data_dir, "jobs", job_id)
     os.makedirs(path, exist_ok=True)
@@ -114,11 +136,9 @@ def youtube_info(url: str, cookiefile: str | None = None, proxy_url: str | None 
             # Metadata and captions are useful even when YouTube withholds
             # direct stream formats from this client.
             "ignore_no_formats_error": True,
-            "extractor_args": {
-                # web requires a GVS PO Token for direct formats; web_embedded
-                # avoids that requirement for videos that allow embedding.
-                "youtube": {"player_client": ["web_embedded"]}
-            },
+            # web requires a GVS PO Token for direct formats; web_embedded
+            # avoids that requirement for videos that allow embedding.
+            "extractor_args": _extractor_args(["web_embedded"]),
         }
         if proxy_url:
             options["proxy"] = proxy_url
@@ -180,12 +200,10 @@ def download_youtube(
             "no_warnings": True,
             "noplaylist": True,
             "js_runtimes": YOUTUBE_JS_RUNTIME,
-            "extractor_args": {
-                # Prefer Safari's pre-merged HLS streams (which can work
-                # without a GVS PO Token), then keep embedded playback as a
-                # fallback for videos that expose formats only there.
-                "youtube": {"player_client": ["web_safari", "web_embedded"]}
-            },
+            # Prefer Safari's pre-merged HLS streams (which can work without a
+            # GVS PO Token), then keep embedded playback as a fallback for
+            # videos that expose formats only there.
+            "extractor_args": _extractor_args(["web_safari", "web_embedded"]),
             # Keep source downloads compact and predictable; 720p is sufficient
             # for the vertical social exports ECLIPSE produces.
             "format": "bv*[height<=720]+ba/b[height<=720]/b",
@@ -246,7 +264,7 @@ def download_youtube_subtitles(
             "noplaylist": True,
             "js_runtimes": YOUTUBE_JS_RUNTIME,
             "ignore_no_formats_error": True,
-            "extractor_args": {"youtube": {"player_client": ["web_embedded"]}},
+            "extractor_args": _extractor_args(["web_embedded"]),
         }
         if proxy_url:
             options["proxy"] = proxy_url
