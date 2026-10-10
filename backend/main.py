@@ -1206,8 +1206,11 @@ def job_analyze(job_id: str, body: JobAnalyzeBody, user=Depends(auth.depends_use
     }
     conn = db.get_conn(SETTINGS.db_path)
     try:
+        # Re-read the row: the source download may have stored a path/object key
+        # after this handler loaded `job`, and those fields must be preserved.
+        fresh = db.get_job(conn, job_id) or job
         try:
-            original = json.loads(job["result_json"] or "{}")
+            original = json.loads(fresh.get("result_json") or "{}")
         except (TypeError, ValueError):
             original = {}
         original["analysis"] = response
