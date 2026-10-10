@@ -22,6 +22,7 @@ export type { Lang, Strings, SiteStrings }
 const ERROR_COPY: Record<ErrorCode, (t: Strings, error: AppError) => string> = {
   invalid_url: (t) => t.errorInvalidUrl,
   drive_not_accessible: (t) => t.errorDriveUnavailable,
+  youtube_unavailable: (t) => t.errorYoutubeUnavailable,
   file_required: (t) => t.errorFileRequired,
   file_too_large: (t, error) => t.errorFileTooLarge(error.limitLabel || '2 GB'),
   file_type_unsupported: (t) => t.errorFileType,

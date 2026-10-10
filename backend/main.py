@@ -48,6 +48,11 @@ _RENDER_WORKER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="eclipse-r
 _SOURCE_WORKER = ThreadPoolExecutor(max_workers=2, thread_name_prefix="eclipse-source")
 
 
+def _source_unavailable_code(source: str | None) -> str:
+    """Distinguish an unreachable YouTube source from an unreachable Drive one."""
+    return "youtube_unavailable" if source == "youtube" else "drive_not_accessible"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs(SETTINGS.data_dir, exist_ok=True)
@@ -492,7 +497,8 @@ def focus_preview(job_id: str, body: FocusPreviewBody, user=Depends(auth.depends
             return JSONResponse(status_code=409, content=error_envelope("unknown", "Server tidak dapat membaca frame video untuk mendeteksi fokus."))
         return focus
     except (ValueError, RuntimeError) as exc:
-        return JSONResponse(status_code=422, content=error_envelope("drive_not_accessible", str(exc)[:300]))
+        code = _source_unavailable_code(source)
+        return JSONResponse(status_code=http_status_for(code), content=error_envelope(code, str(exc)[:300]))
     except Exception as exc:
         logger.exception("Gagal menghitung fokus preview untuk job %s", job_id)
         return JSONResponse(status_code=500, content=error_envelope("unknown", f"Deteksi fokus gagal: {str(exc)[:240]}"))
@@ -785,8 +791,10 @@ def ingest_youtube(body: IngestYoutubeBody, user=Depends(auth.depends_user)):
             conn.close()
     except ValueError as exc:
         msg = str(exc)
-        code = "file_too_large" if "melebihi" in msg else "drive_not_accessible"
-        hint = "Pastikan video publik/tidak terdaftar dan coba lagi." if code != "file_too_large" else None
+        code = "file_too_large" if "melebihi" in msg else "youtube_unavailable"
+        hint = None
+        if code == "youtube_unavailable":
+            hint = "Jika YouTube meminta verifikasi, pasang cookie YouTube di Pengaturan atau gunakan proxy egress."
         return JSONResponse(status_code=http_status_for(code), content=error_envelope(code, msg, hint))
 
 
@@ -1123,7 +1131,7 @@ def job_analyze(job_id: str, body: JobAnalyzeBody, user=Depends(auth.depends_use
         analysis.save_candidates(job_path, built)
     except (RuntimeError, ValueError, gemini.GeminiError) as exc:
         code = (
-            "drive_not_accessible" if source_download_failed
+            "youtube_unavailable" if source_download_failed
             else "backend_offline" if isinstance(exc, gemini.GeminiError)
             else "empty_result" if body.subtitle_source in {"youtube", "manual"}
             else "unknown"
@@ -1135,7 +1143,7 @@ def job_analyze(job_id: str, body: JobAnalyzeBody, user=Depends(auth.depends_use
             conn.close()
         if source_download_failed:
             _release_user_quota(user, "analyze", db.today_key())
-        status_code = 503 if code == "backend_offline" else 422 if code in {"empty_result", "drive_not_accessible"} else 500
+        status_code = 503 if code == "backend_offline" else 422 if code in {"empty_result", "drive_not_accessible", "youtube_unavailable"} else 500
         return JSONResponse(status_code=status_code,
                              content=error_envelope(code, str(exc)[:300]))
     except Exception:
@@ -1148,7 +1156,7 @@ def job_analyze(job_id: str, body: JobAnalyzeBody, user=Depends(auth.depends_use
         if source_download_failed:
             _release_user_quota(user, "analyze", db.today_key())
             return JSONResponse(status_code=422, content=error_envelope(
-                "drive_not_accessible", "Sumber YouTube gagal diunduh ke server. Coba lagi atau unggah file video lokal."
+                "youtube_unavailable", "Sumber YouTube gagal diunduh ke server. Coba lagi atau unggah file video lokal."
             ))
         return JSONResponse(status_code=500, content=error_envelope("unknown", "Pipeline analisis gagal."))
     clips_out = [
@@ -1251,7 +1259,8 @@ def job_render(job_id: str, body: JobRenderBody, user=Depends(auth.depends_user)
             return JSONResponse(status_code=503, content=error_envelope("backend_offline", str(exc)))
         except (ValueError, RuntimeError) as exc:
             _release_user_quota(user, "render", quota_day)
-            return JSONResponse(status_code=422, content=error_envelope("drive_not_accessible", str(exc)[:300]))
+            code = _source_unavailable_code(job.get("source"))
+            return JSONResponse(status_code=http_status_for(code), content=error_envelope(code, str(exc)[:300]))
         except Exception as exc:
             _release_user_quota(user, "render", quota_day)
             logger.exception("Gagal menyiapkan sumber YouTube untuk render job %s", job_id)
@@ -1352,7 +1361,8 @@ def job_render_batch(job_id: str, body: JobRenderBatchBody, user=Depends(auth.de
                 db.update_job(conn, render_job["id"], status="error", error_code="unknown", error_message=str(exc)[:300])
             finally:
                 conn.close()
-            return JSONResponse(status_code=422, content=error_envelope("drive_not_accessible", str(exc)[:300]))
+            code = _source_unavailable_code(job.get("source"))
+            return JSONResponse(status_code=http_status_for(code), content=error_envelope(code, str(exc)[:300]))
         except Exception as exc:
             _release_user_quota(user, "render", quota_day)
             logger.exception("Gagal menyiapkan sumber YouTube untuk batch render job %s", job_id)

@@ -78,6 +78,7 @@ export const MVP_LIMITS = {
 export type ErrorCode =
   | 'invalid_url'
   | 'drive_not_accessible'
+  | 'youtube_unavailable'
   | 'file_required'
   | 'file_too_large'
   | 'file_type_unsupported'

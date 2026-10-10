@@ -8,6 +8,7 @@ from typing import Any, Optional
 ERROR_CODES = (
     "invalid_url",
     "drive_not_accessible",
+    "youtube_unavailable",
     "file_required",
     "file_too_large",
     "file_type_unsupported",
@@ -22,6 +23,7 @@ ERROR_CODES = (
 _STATUS_BY_CODE = {
     "invalid_url": 400,
     "drive_not_accessible": 422,
+    "youtube_unavailable": 422,
     "file_required": 400,
     "file_too_large": 413,
     "file_type_unsupported": 415,
