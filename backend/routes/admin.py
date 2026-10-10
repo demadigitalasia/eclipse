@@ -12,6 +12,7 @@ from backend import auth, db, gemini, media, storage
 from backend.config import SETTINGS, subscription_defaults
 from backend.core.errors import error_envelope
 from backend.secrets import decrypt_secret, encrypt_secret
+from backend.youtube_cookies import normalize_cookies
 from backend.schemas import GeminiKeyCreate, GeminiKeyUpdate
 from backend.utils.egress import get_egress_ip
 from backend.utils.proxy import (
@@ -238,6 +239,72 @@ def admin_list_gemini_keys(user=Depends(auth.depends_admin)):
     if isinstance(user, JSONResponse):
         return user
     return {"keys": gemini.list_entries()}
+
+
+SERVER_COOKIE_ACCOUNT_ID = "__server__"
+
+
+class ServerYouTubeCookiesBody(BaseModel):
+    content: str = Field(min_length=1, max_length=512_000)
+
+
+@router.get("/admin/youtube-cookies")
+def admin_get_server_youtube_cookies(user=Depends(auth.depends_admin)):
+    if isinstance(user, JSONResponse):
+        return user
+    conn = db.get_conn(SETTINGS.db_path)
+    try:
+        row = conn.execute(
+            "SELECT size_bytes, updated_at FROM youtube_cookies WHERE account_id = ?",
+            (SERVER_COOKIE_ACCOUNT_ID,),
+        ).fetchone()
+        return {
+            "configured": row is not None,
+            "sizeBytes": int(row["size_bytes"]) if row else 0,
+            "updatedAt": row["updated_at"] if row else None,
+            "environmentConfigured": bool(os.environ.get("ECLIPSE_YOUTUBE_COOKIES_B64", "").strip()
+                                          or os.environ.get("ECLIPSE_YOUTUBE_COOKIES", "").strip()),
+        }
+    finally:
+        conn.close()
+
+
+@router.put("/admin/youtube-cookies")
+def admin_save_server_youtube_cookies(body: ServerYouTubeCookiesBody, user=Depends(auth.depends_admin)):
+    if isinstance(user, JSONResponse):
+        return user
+    try:
+        normalized, count = normalize_cookies(body.content)
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content=error_envelope("invalid_range", str(exc)))
+    ciphertext = encrypt_secret(normalized)
+    conn = db.get_conn(SETTINGS.db_path)
+    try:
+        conn.execute(
+            "INSERT INTO youtube_cookies (account_id, ciphertext, size_bytes, updated_at) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(account_id) DO UPDATE SET ciphertext=excluded.ciphertext, "
+            "size_bytes=excluded.size_bytes, updated_at=excluded.updated_at",
+            (SERVER_COOKIE_ACCOUNT_ID, ciphertext, len(normalized.encode("utf-8")), db.now_iso()),
+        )
+        conn.commit()
+        db.log_audit(conn, user["email"], "server-youtube-cookie-save", f"{count} cookies")
+        return {"ok": True, "configured": True}
+    finally:
+        conn.close()
+
+
+@router.delete("/admin/youtube-cookies")
+def admin_delete_server_youtube_cookies(user=Depends(auth.depends_admin)):
+    if isinstance(user, JSONResponse):
+        return user
+    conn = db.get_conn(SETTINGS.db_path)
+    try:
+        conn.execute("DELETE FROM youtube_cookies WHERE account_id = ?", (SERVER_COOKIE_ACCOUNT_ID,))
+        conn.commit()
+        db.log_audit(conn, user["email"], "server-youtube-cookie-delete")
+        return {"ok": True, "configured": False}
+    finally:
+        conn.close()
 
 
 @router.get("/admin/proxies")

@@ -697,6 +697,26 @@ function AdminPaymentReview({ lang }: { lang: Lang }) {
   )
 }
 
+function ServerYouTubeCookiesPanel({ lang }: { lang: Lang }) {
+  const t = getStrings(lang)
+  return (
+    <section className="panel settings-youtube-cookies" aria-labelledby="server-youtube-cookies-title">
+      <div>
+        <h3 id="server-youtube-cookies-title">{t.adminServerCookiesTitle}</h3>
+        <p className="helper">{t.adminServerCookiesHelp}</p>
+      </div>
+      <YouTubeCookiesControl
+        t={t}
+        endpoint="/api/admin/youtube-cookies"
+        title={t.adminServerCookiesTitle}
+        help={t.adminServerCookiesHelp}
+        buttonLabel={t.adminServerCookiesButton}
+        networkNote={t.adminServerCookiesNote}
+      />
+    </section>
+  )
+}
+
 export function AdminPage({ lang }: { lang: Lang }) {
   const t = getSiteStrings(lang)
   const { user, users, audit, adminDataError, setRole, setPlan, renewPlan, setActive, clearAudit, removeUser, refreshAdmin } = useAuth()
@@ -859,6 +879,12 @@ export function AdminPage({ lang }: { lang: Lang }) {
     subscription: { title: getInlineCopy(lang, "copy_pengaturan_subscription_bcde249"), description: getInlineCopy(lang, "copy_kelola_kuota_harga_dan_masa_aktif__4fd524b") },
     gemini: { title: 'Gemini API', description: getInlineCopy(lang, "copy_kelola_konfigurasi_provider_gemini_bdd8c29") },
     proxy: { title: 'Proxy / Egress', description: getInlineCopy(lang, "copy_kelola_jalur_koneksi_keluar_server_2435417") },
+    youtube: {
+      title: lang === 'id' ? 'Cookie YouTube server' : 'Server YouTube cookies',
+      description: lang === 'id'
+        ? 'Kelola cookie YouTube yang dipakai otomatis untuk semua pengguna.'
+        : 'Manage the YouTube cookies used automatically for every user.',
+    },
     activity: { title: getInlineCopy(lang, "copy_aktivitas_6a83bdd"), description: getInlineCopy(lang, "copy_tinjau_aktivitas_yang_tercatat_di__df0a3a9") },
     settings: { title: getInlineCopy(lang, "copy_pengaturan_sistem_39937ed"), description: getInlineCopy(lang, "copy_batas_aktif_dan_kemampuan_runtime__e3bd17c") },
   }
@@ -1088,6 +1114,7 @@ export function AdminPage({ lang }: { lang: Lang }) {
 
       {section === 'gemini' && <GeminiApiPanel lang={lang} />}
       {section === 'proxy' && <ProxySettingsPanel lang={lang} />}
+      {section === 'youtube' && <ServerYouTubeCookiesPanel lang={lang} />}
       {section === 'subscription' && <AdminSubscriptionSettings lang={lang} />}
 
 

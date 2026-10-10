@@ -4,7 +4,25 @@ import type { Strings } from '../localization'
 
 type CookieStatus = { configured: boolean; sizeBytes: number; updatedAt: string | null }
 
-export default function YouTubeCookiesControl({ t, disabled = false }: { t: Strings; disabled?: boolean }) {
+export default function YouTubeCookiesControl({
+  t,
+  disabled = false,
+  endpoint = '/api/youtube-cookies',
+  kicker = 'YOUTUBE',
+  title,
+  help,
+  networkNote,
+  buttonLabel,
+}: {
+  t: Strings
+  disabled?: boolean
+  endpoint?: string
+  kicker?: string
+  title?: string
+  help?: string
+  networkNote?: string
+  buttonLabel?: string
+}) {
   const [configured, setConfigured] = useState<boolean | null>(null)
   const [open, setOpen] = useState(false)
   const [content, setContent] = useState('')
@@ -14,7 +32,7 @@ export default function YouTubeCookiesControl({ t, disabled = false }: { t: Stri
 
   const loadStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/youtube-cookies', { credentials: 'same-origin' })
+      const response = await fetch(endpoint, { credentials: 'same-origin' })
       const body = await response.json()
       if (!response.ok) throw new Error(body?.error?.message || t.youtubeCookiesLoadError)
       setConfigured(Boolean((body as CookieStatus).configured))
@@ -23,7 +41,7 @@ export default function YouTubeCookiesControl({ t, disabled = false }: { t: Stri
       setConfigured(null)
       if (open) setError(cause instanceof Error ? cause.message : t.youtubeCookiesLoadError)
     }
-  }, [open, t.youtubeCookiesLoadError])
+  }, [open, t.youtubeCookiesLoadError, endpoint])
 
   useEffect(() => { void loadStatus() }, [loadStatus])
   useEffect(() => {
@@ -65,7 +83,7 @@ export default function YouTubeCookiesControl({ t, disabled = false }: { t: Stri
     setError('')
     setNotice('')
     try {
-      const response = await fetch('/api/youtube-cookies', {
+      const response = await fetch(endpoint, {
         method: 'PUT',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
@@ -89,7 +107,7 @@ export default function YouTubeCookiesControl({ t, disabled = false }: { t: Stri
     setError('')
     setNotice('')
     try {
-      const response = await fetch('/api/youtube-cookies', { method: 'DELETE', credentials: 'same-origin' })
+      const response = await fetch(endpoint, { method: 'DELETE', credentials: 'same-origin' })
       const body = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(body?.error?.message || t.youtubeCookiesLoadError)
       setConfigured(false)
@@ -113,7 +131,7 @@ export default function YouTubeCookiesControl({ t, disabled = false }: { t: Stri
         aria-expanded={open}
       >
         <Icon name="key" size={15} />
-        <span>{t.youtubeCookiesButton}</span>
+        <span>{buttonLabel ?? t.youtubeCookiesButton}</span>
         <span className={`youtube-cookie-status ${configured ? 'is-ready' : ''}`}>
           {configured === null ? '…' : configured ? t.youtubeCookiesReady : t.youtubeCookiesMissing}
         </span>
@@ -124,8 +142,8 @@ export default function YouTubeCookiesControl({ t, disabled = false }: { t: Stri
           <section className="youtube-cookie-modal" role="dialog" aria-modal="true" aria-labelledby="youtube-cookie-title">
             <header className="youtube-cookie-header">
               <div>
-                <span className="section-kicker">YOUTUBE</span>
-                <h2 id="youtube-cookie-title">{t.youtubeCookiesTitle}</h2>
+                <span className="section-kicker">{kicker}</span>
+                <h2 id="youtube-cookie-title">{title ?? t.youtubeCookiesTitle}</h2>
               </div>
               <button type="button" className="mini-btn" onClick={close} aria-label={t.close} disabled={busy}>
                 <Icon name="x" size={16} />
@@ -136,11 +154,11 @@ export default function YouTubeCookiesControl({ t, disabled = false }: { t: Stri
               <span className="youtube-cookie-status-dot" aria-hidden="true" />
               <div>
                 <strong>{configured ? t.youtubeCookiesStored : t.youtubeCookiesEmpty}</strong>
-                <p>{t.youtubeCookiesHelp}</p>
+                <p>{help ?? t.youtubeCookiesHelp}</p>
               </div>
             </div>
 
-            <p className="youtube-cookie-network-note">{t.youtubeCookiesNetworkNote}</p>
+            <p className="youtube-cookie-network-note">{networkNote ?? t.youtubeCookiesNetworkNote}</p>
 
             <label className="youtube-cookie-file">
               <Icon name="upload" size={16} />

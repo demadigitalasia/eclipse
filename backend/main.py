@@ -24,7 +24,7 @@ from backend.routes.notifications import router as notifications_router
 from backend.routes.subscription import router as subscription_router
 from backend.routes.youtube_cookies import router as youtube_cookies_router
 from backend.secrets import decrypt_secret
-from backend.youtube_cookies import temporary_cookie_file
+from backend.youtube_cookies import env_cookie_content, temporary_cookie_file
 from backend.utils.proxy import (
     ProxyPoolUnavailable,
     ProxyTransportError,
@@ -336,13 +336,29 @@ def _register_media_job(user: dict, source: str, input_ref: str, path: str) -> d
         conn.close()
 
 
+SERVER_COOKIE_ACCOUNT_ID = "__server__"
+
+
 def _youtube_cookie_for(user_id: str) -> str | None:
+    """Return the account's YouTube cookies, else the server-wide cookies.
+
+    Precedence: per-account cookies > server cookies stored by an admin >
+    server cookies supplied through the environment.
+    """
     conn = db.get_conn(SETTINGS.db_path)
     try:
-        row = conn.execute("SELECT ciphertext FROM youtube_cookies WHERE account_id = ?", (user_id,)).fetchone()
-        return decrypt_secret(row["ciphertext"]) if row else None
+        row = conn.execute(
+            "SELECT ciphertext FROM youtube_cookies WHERE account_id IN (?, ?) "
+            "ORDER BY (account_id = ?) DESC",
+            (user_id, SERVER_COOKIE_ACCOUNT_ID, user_id),
+        ).fetchone()
+        if row:
+            text = decrypt_secret(row["ciphertext"])
+            if text:
+                return text
     finally:
         conn.close()
+    return env_cookie_content()
 
 
 def _source_path(job: dict) -> str:
@@ -1025,14 +1041,7 @@ def job_analyze(job_id: str, body: JobAnalyzeBody, user=Depends(auth.depends_use
                 raise ValueError("Berkas subtitle tidak berisi teks yang dapat dibaca.")
             analysis.save_transcript(job_path, transcript)
         elif body.subtitle_source == "youtube" and job.get("source") == "youtube":
-            cookie_conn = db.get_conn(SETTINGS.db_path)
-            try:
-                cookie_row = cookie_conn.execute(
-                    "SELECT ciphertext FROM youtube_cookies WHERE account_id = ?", (user["id"],)
-                ).fetchone()
-                cookie_text = decrypt_secret(cookie_row["ciphertext"]) if cookie_row else None
-            finally:
-                cookie_conn.close()
+            cookie_text = _youtube_cookie_for(user["id"])
             subtitle_text = ""
             for attempt in range(3):
                 proxy_id, proxy_url = assign_proxy(user["id"], job_id)

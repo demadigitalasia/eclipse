@@ -217,6 +217,7 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
     { to: '/app/admin/subscription', label: t.navAdminSubscription, icon: 'creditCard' as const },
     { to: '/app/admin/gemini', label: 'Gemini API', icon: 'key' as const },
     { to: '/app/admin/proxy', label: getInlineCopy(lang, "copy_proxy_egress_b7596d1"), icon: 'globe' as const },
+    { to: '/app/admin/youtube', label: lang === 'id' ? 'YouTube' : 'YouTube', icon: 'key' as const },
     { to: '/app/admin/activity', label: t.navAdminActivity, icon: 'activity' as const },
     { to: '/app/admin/settings', label: t.navAdminSettings, icon: 'sliders' as const },
   ]

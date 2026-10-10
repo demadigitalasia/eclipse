@@ -1,4 +1,6 @@
 """Validation and short-lived use of per-account YouTube cookies."""
+import base64
+import binascii
 import json
 import os
 import tempfile
@@ -73,6 +75,29 @@ def normalize_cookies(raw: str) -> tuple[str, int]:
     if not count:
         raise ValueError("Tidak ditemukan cookie YouTube atau Google yang valid.")
     return "\n".join(kept) + "\n", count
+
+
+def env_cookie_content() -> Optional[str]:
+    """Server-wide YouTube cookies supplied by the operator via environment.
+
+    Accepts raw Netscape/JSON in ``ECLIPSE_YOUTUBE_COOKIES`` or a base64-encoded
+    payload in ``ECLIPSE_YOUTUBE_COOKIES_B64`` (preferred, newline-safe).
+    """
+    b64 = os.environ.get("ECLIPSE_YOUTUBE_COOKIES_B64", "").strip()
+    if b64:
+        try:
+            raw = base64.b64decode(b64, validate=False).decode("utf-8", "replace")
+        except (binascii.Error, ValueError):
+            return None
+    else:
+        raw = os.environ.get("ECLIPSE_YOUTUBE_COOKIES", "")
+    if not raw.strip():
+        return None
+    try:
+        normalized, _ = normalize_cookies(raw)
+    except ValueError:
+        return None
+    return normalized
 
 
 @contextmanager

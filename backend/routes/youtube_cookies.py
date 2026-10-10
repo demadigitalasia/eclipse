@@ -53,6 +53,7 @@ def save_cookies(body: SaveCookiesBody, user=Depends(auth.depends_user)):
             "size_bytes=excluded.size_bytes, updated_at=excluded.updated_at",
             (user["id"], ciphertext, len(normalized.encode("utf-8")), db.now_iso()),
         )
+        conn.commit()
         db.log_audit(conn, user["email"], "youtube-cookie-save", f"{count} cookies")
         return {"ok": True, "configured": True}
     finally:
@@ -66,6 +67,7 @@ def delete_cookies(user=Depends(auth.depends_user)):
     conn = db.get_conn(SETTINGS.db_path)
     try:
         conn.execute("DELETE FROM youtube_cookies WHERE account_id = ?", (user["id"],))
+        conn.commit()
         db.log_audit(conn, user["email"], "youtube-cookie-delete")
         return {"ok": True, "configured": False}
     finally:
