@@ -1,0 +1,220 @@
+{
+  "main": {
+    "id": "472b90e4147758da",
+    "type": "split",
+    "children": [
+      {
+        "id": "9ad044710bddc58b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "462782dbef64c667",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "572c5b119c15021e",
+    "type": "split",
+    "children": [
+      {
+        "id": "cf0a391be2f64d02",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5e3ddc6e89725d0e",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "c5c9d0b1d985def5",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "28121d304dc79bbf",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "da627790df929fd9",
+    "type": "split",
+    "children": [
+      {
+        "id": "3216134b857c5e4c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1fdce9237c2d3600",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "docs/perencanaan/00-INDEKS.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "bd945b25ebb691e1",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "docs/perencanaan/00-INDEKS.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "d9568f2559093b2c",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "45499ee43d86dc4d",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "ad3763faadea9f93",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "docs/perencanaan/00-INDEKS.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "462782dbef64c667",
+  "lastOpenFiles": [
+    "node_modules/react-router/docs/start/framework/routing.md",
+    "node_modules/react-router/docs/start/framework/route-module.md",
+    "node_modules/react-router/docs/start/data/route-object.md",
+    "docs/README.md",
+    "Untitled 1.canvas",
+    "Untitled.base",
+    "docs/perencanaan/00-INDEKS.md",
+    "dist/assets/SubscriptionPage-QDA2hw3z.js",
+    "dist/assets/StudioPage-DtMCAnnt.js",
+    "dist/assets/LandingPage-D9EaSBUg.js",
+    "dist/assets/DashboardPage-DB5p3YCO.js",
+    "dist/assets/AuthPages-BxmoTdqY.js",
+    "dist/assets/AccountPages-Caxx07Cw.js",
+    "dist/assets/index-BDinxaaI.js",
+    "dist/assets/index-Cv_n-iVG.js",
+    "dist/assets/index-BHzwOBXt.js",
+    "dist/images/source-youtube-new.png",
+    "dist/images/source-upload-new.png",
+    "dist/images/source-drive-new.png",
+    "public/images/source-upload-new.png",
+    "public/images/source-drive-new.png",
+    "public/images/source-youtube-new.png",
+    "dist/images/source-youtube-proposal.png",
+    "dist/images/source-upload-proposal.png",
+    "dist/images/source-icons-preview.jpg",
+    "dist/images/source-drive-proposal.png",
+    "docs/laporan/AUDIT-DESAIN-MENDALAM-ECLIPSE-2026-10-08.md",
+    "node_modules/react-router/docs/explanation/server-client-execution.md",
+    "Untitled.canvas",
+    "docs/laporan/AUDIT-DOKUMEN-ECLIPSE-2026-10-08.md"
+  ]
+}

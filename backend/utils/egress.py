@@ -9,7 +9,7 @@ cookies manager can verify the two match.
 import time
 from typing import Optional
 
-import requests
+import httpx
 
 from backend.config import logger
 
@@ -42,11 +42,10 @@ def get_egress_ip(
     ):
         return _EGRESS_CACHE["ip"]
 
-    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
     ip: Optional[str] = None
     for endpoint in _IP_ECHO_ENDPOINTS:
         try:
-            resp = requests.get(endpoint, proxies=proxies, timeout=timeout)
+            resp = httpx.get(endpoint, proxy=proxy_url, timeout=timeout)
             if resp.status_code == 200:
                 data = resp.json()
                 candidate = (data.get("ip") or data.get("ip_addr")) if isinstance(data, dict) else None
@@ -54,7 +53,14 @@ def get_egress_ip(
                     ip = str(candidate).strip()
                     break
         except Exception as exc:
-            logger.debug(f"Egress IP probe failed via {endpoint}: {exc}")
+            message = str(exc)
+            if proxy_url:
+                try:
+                    from backend.utils.proxy import redact_proxy_secret
+                    message = redact_proxy_secret(message, proxy_url)
+                except Exception:
+                    message = "proxy connection failed"
+            logger.debug(f"Egress IP probe failed via {endpoint}: {message}")
             continue
 
     if ip:

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useFocusReturn } from '../hooks'
 import type { ViralClip } from '../types'
 import { formatTime } from '../types'
-import type { Strings } from '../i18n'
+import type { Strings } from '../localization'
 
 interface Props {
   t: Strings
@@ -12,9 +13,18 @@ interface Props {
 }
 
 export default function TrimmerModal({ t, clip, duration, onClose, onApply }: Props) {
+  useFocusReturn()
   const [start, setStart] = useState(clip.start_time)
   const [end, setEnd] = useState(clip.end_time)
   const valid = start >= 0 && end > start && end <= duration
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -35,7 +45,7 @@ export default function TrimmerModal({ t, clip, duration, onClose, onApply }: Pr
           {formatTime(start)} → {formatTime(end)} · durasi video {formatTime(duration)}
         </p>
         {!valid && <p className="error-box" style={{ marginTop: 8 }}>Rentang tidak valid.</p>}
-        <div className="row-inline" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
+        <div className="row-inline modal-actions">
           <button type="button" className="btn-secondary" onClick={onClose}>{t.close}</button>
           <button type="button" className="btn-primary" disabled={!valid} onClick={() => onApply({ ...clip, start_time: start, end_time: end })}>
             {t.trim}

@@ -19,6 +19,7 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+/data/
 
 # OS & editor
 .DS_Store

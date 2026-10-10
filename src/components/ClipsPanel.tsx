@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
-import type { SortBy, ViralClip, ViralityFilter } from '../types'
+import type { SortBy, SourceMode, ViralClip, ViralityFilter } from '../types'
 import { formatTime, scoreTier } from '../types'
-import type { Strings } from '../i18n'
+import type { Strings } from '../localization'
+import ThemedSelect from './ThemedSelect'
 
 interface Props {
   t: Strings
+  source: SourceMode
   clips: ViralClip[]
   marked: Record<string, boolean>
   onToggleMark: (key: string) => void
@@ -16,11 +18,12 @@ interface Props {
 
 export const clipKey = (c: ViralClip) => `${c.start_time}_${c.end_time}`
 
-export default function ClipsPanel({ t, clips, marked, onToggleMark, onToggleAll, onPreview, onTrim, onOpenStudio }: Props) {
+export default function ClipsPanel({ t, source, clips, marked, onToggleMark, onToggleAll, onPreview, onTrim, onOpenStudio }: Props) {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<ViralityFilter>('all')
   const [sort, setSort] = useState<SortBy>('virality')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [copyNotice, setCopyNotice] = useState('')
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -43,8 +46,10 @@ export default function ClipsPanel({ t, clips, marked, onToggleMark, onToggleAll
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
+      setCopyNotice(t.copiedTimeFeedback)
+      window.setTimeout(() => setCopyNotice(''), 2400)
     } catch {
-      /* abaikan */
+      setCopyNotice('')
     }
   }
 
@@ -54,26 +59,41 @@ export default function ClipsPanel({ t, clips, marked, onToggleMark, onToggleAll
     a.href = URL.createObjectURL(blob)
     a.download = 'eclipse-clips.json'
     a.click()
-    URL.revokeObjectURL(a.href)
+    window.setTimeout(() => URL.revokeObjectURL(a.href), 1000)
   }
 
   return (
     <div className="panel inspector">
+      <p className="helper" role="note">{source === 'youtube' ? t.scoreExplanationYoutube : t.scoreExplanationVideo}</p>
+      <button type="button" className="btn-primary clips-open-studio" onClick={onOpenStudio} disabled={markedCount === 0}>
+        {t.openStudio(markedCount)}
+      </button>
       <div className="toolbar">
         <input className="input" placeholder={t.searchClips} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t.searchClips} />
-        <div className="toolbar-row" role="group">
-          {(['all', 'high', 'medium', 'marked'] as ViralityFilter[]).map((f) => (
-            <button key={f} type="button" className={`chip ${filter === f ? 'is-on' : ''}`} onClick={() => setFilter(f)}>
-              {f === 'all' ? t.filterAll : f === 'high' ? t.filterHigh : f === 'medium' ? t.filterMid : t.filterMarked}
-            </button>
-          ))}
+        <div className="toolbar-section">
+          <span className="toolbar-label">{t.filterGroupLabel}</span>
+          <div className="toolbar-row toolbar-row--filters" role="group" aria-label={t.filterGroupLabel}>
+            {(['all', 'high', 'medium', 'marked'] as ViralityFilter[]).map((f) => (
+              <button key={f} type="button" className={`chip ${filter === f ? 'is-on' : ''}`} onClick={() => setFilter(f)}>
+                {f === 'all' ? t.filterAll : f === 'high' ? t.filterHigh : f === 'medium' ? t.filterMid : t.filterMarked}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="toolbar-row" role="group">
-          {(['virality', 'time', 'duration'] as SortBy[]).map((s) => (
-            <button key={s} type="button" className={`chip ${sort === s ? 'is-on' : ''}`} onClick={() => setSort(s)}>
-              {s}
-            </button>
-          ))}
+        <div className="toolbar-section">
+          <span className="toolbar-label">{t.sortGroupLabel}</span>
+          <ThemedSelect
+            label={t.sortGroupLabel}
+            value={sort}
+            options={[
+              { value: 'virality', label: t.sortVirality },
+              { value: 'time', label: t.sortTime },
+              { value: 'duration', label: t.sortDuration },
+            ]}
+            onChange={(value) => setSort(value as SortBy)}
+          />
+        </div>
+        <div className="toolbar-row toolbar-row--bulk" role="group" aria-label={t.bulkActionsLabel}>
           <button type="button" className="chip" onClick={onToggleAll}>
             {markedCount === clips.length ? t.unmarkAll : t.markAll}
           </button>
@@ -83,6 +103,9 @@ export default function ClipsPanel({ t, clips, marked, onToggleMark, onToggleAll
         </div>
       </div>
 
+      {shown.length === 0 && (
+        <p className="history-empty" role="status">{t.clipsEmptyFilter}</p>
+      )}
       {shown.map((c) => {
         const k = clipKey(c)
         const tier = scoreTier(c.virality_score)
@@ -114,9 +137,7 @@ export default function ClipsPanel({ t, clips, marked, onToggleMark, onToggleAll
         )
       })}
 
-      <button type="button" className="btn-primary" onClick={onOpenStudio} disabled={markedCount === 0}>
-        {t.openStudio(markedCount)}
-      </button>
+      {copyNotice && <p className="action-feedback" role="status" aria-live="polite">{copyNotice}</p>}
     </div>
   )
 }

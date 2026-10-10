@@ -1,25 +1,26 @@
 import type { Lang } from '../types'
-import type { Strings } from '../i18n'
+import type { Strings } from '../localization'
+import { Link } from 'react-router-dom'
+import NotificationBell from './NotificationBell'
 
 interface Props {
   step: 1 | 2 | 3
   hasResult: boolean
   loading: boolean
   lang: Lang
-  setLang: (l: Lang) => void
   t: Strings
   onGoInput: () => void
   onGoDiscover: () => void
   onGoStudio: () => void
 }
 
-export default function Topbar({ step, hasResult, loading, lang, setLang, t, onGoInput, onGoDiscover, onGoStudio }: Props) {
+export default function Topbar({ step, hasResult, loading, lang, t, onGoInput, onGoDiscover, onGoStudio }: Props) {
   const canDiscover = hasResult || loading
   return (
     <header className="topbar">
-      <div className="brand">
-        ECLIPSE<b>.</b>
-      </div>
+      <Link to="/" className="brand topbar-brand" aria-label="ECLIPSE Studio">
+        <img className="studio-wordmark" src="/images/studio-wordmark.png" alt="Studio" />
+      </Link>
       <nav className="stepper" aria-label="Workflow steps">
         <button
           type="button"
@@ -28,7 +29,7 @@ export default function Topbar({ step, hasResult, loading, lang, setLang, t, onG
           onClick={onGoInput}
         >
           <span className="dot">1</span>
-          <span className="lbl">Input</span>
+          <span className="lbl">{t.inputStep}</span>
         </button>
         <span className="step-arrow" aria-hidden="true">→</span>
         <button
@@ -39,7 +40,7 @@ export default function Topbar({ step, hasResult, loading, lang, setLang, t, onG
           onClick={onGoDiscover}
         >
           <span className="dot">2</span>
-          <span className="lbl">Discover</span>
+          <span className="lbl">{t.discoverStep}</span>
         </button>
         <span className="step-arrow" aria-hidden="true">→</span>
         <button
@@ -50,21 +51,11 @@ export default function Topbar({ step, hasResult, loading, lang, setLang, t, onG
           onClick={onGoStudio}
         >
           <span className="dot">3</span>
-          <span className="lbl">Studio</span>
+          <span className="lbl">{t.studioStep}</span>
         </button>
       </nav>
       <div className="topbar-actions">
-        <button type="button" className="btn-ghost" title={t.guide}>
-          {t.guide}
-        </button>
-        <div className="lang-switch" role="group" aria-label="Language">
-          <button type="button" className={lang === 'id' ? 'is-on' : ''} onClick={() => setLang('id')} aria-pressed={lang === 'id'}>
-            ID
-          </button>
-          <button type="button" className={lang === 'en' ? 'is-on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'}>
-            EN
-          </button>
-        </div>
+        <NotificationBell lang={lang} />
       </div>
     </header>
   )
