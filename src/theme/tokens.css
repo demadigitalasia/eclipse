@@ -98,6 +98,10 @@
   --track-label: 0.14em;
   --track-brand: 0.18em;
   --track-eyebrow: 0.22em;
+  --google-blue: #4285f4;
+  --google-green: #34a853;
+  --google-yellow: #fbbc05;
+  --google-red: #ea4335;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

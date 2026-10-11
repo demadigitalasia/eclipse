@@ -1302,7 +1302,12 @@ input[type='radio'], input[type='checkbox'], input[type='range'] { accent-color:
 .google-auth { display: flex; flex-direction: column; gap: 0.75rem; }
 .auth-divider { display: flex; align-items: center; gap: 0.75rem; color: var(--faint); font-size: var(--type-xs); letter-spacing: 0.08em; text-transform: uppercase; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.google-button { display: flex; justify-content: center; min-height: 40px; }
+.google-signin { position: relative; display: flex; }
+.google-signin__btn { width: 100%; pointer-events: none; }
+.google-signin__btn:disabled { opacity: 1; }
+.google-glyph { width: 18px; height: 18px; flex: none; }
+.google-signin__mount { position: absolute; inset: 0; opacity: 0; overflow: hidden; border-radius: var(--radius-sm); }
+.google-signin__mount > div, .google-signin__mount iframe { width: 100% !important; height: 100% !important; }
 .modal-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 1.2rem; background: var(--scrim); backdrop-filter: blur(6px); }
 .modal { width: min(560px, 100%); margin: auto; background: var(--surface-2); box-shadow: var(--shadow-lg); border: 1px solid var(--border-strong); }
 .modal-actions { justify-content: flex-end; margin-top: 1rem; }
