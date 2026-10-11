@@ -35,20 +35,44 @@ FACE_MODEL_PATH = FOCUS_MODEL_DIR / "blaze_face_short_range.tflite"
 PERSON_MODEL_PATH = FOCUS_MODEL_DIR / "efficientdet_lite0.tflite"
 
 
+_ENCODER_CODECS = {"nvenc": "h264_nvenc", "amf": "h264_amf", "qsv": "h264_qsv", "cpu": "libx264"}
+
+
+def _probe_encoder(name: str) -> bool:
+    """Encode one throwaway frame to confirm the encoder actually works.
+
+    A codec can be compiled into FFmpeg yet fail at runtime (e.g. h264_nvenc
+    without an NVIDIA GPU/CUDA, or h264_qsv without an Intel device), so the
+    compiled-in list alone is not a reliable availability signal.
+    """
+    try:
+        proc = subprocess.run(
+            [
+                "ffmpeg", "-hide_banner", "-loglevel", "error",
+                "-f", "lavfi", "-i", "color=c=black:s=128x72:r=25",
+                "-frames:v", "1", "-c:v", _ENCODER_CODECS[name], "-f", "null", "-",
+            ],
+            capture_output=True, text=True, timeout=25,
+        )
+        return proc.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
 def get_encoder_capabilities() -> dict:
     global _ENCODER_CACHE
     if _ENCODER_CACHE is None:
+        compiled = {"nvenc": False, "amf": False, "qsv": False, "cpu": False}
         try:
             proc = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True, timeout=30)
             output = f"{proc.stdout}\n{proc.stderr}"
-            _ENCODER_CACHE = {
-                "nvenc": bool(re.search(r"\bh264_nvenc\b", output)),
-                "amf": bool(re.search(r"\bh264_amf\b", output)),
-                "qsv": bool(re.search(r"\bh264_qsv\b", output)),
-                "cpu": bool(re.search(r"\blibx264\b", output)),
-            }
+            compiled = {name: bool(re.search(rf"\b{codec}\b", output)) for name, codec in _ENCODER_CODECS.items()}
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            _ENCODER_CACHE = {"nvenc": False, "amf": False, "qsv": False, "cpu": False}
+            pass
+        _ENCODER_CACHE = {
+            name: (compiled[name] and (name == "cpu" or _probe_encoder(name)))
+            for name in compiled
+        }
     recommended = next((name for name in ("nvenc", "amf", "qsv", "cpu") if _ENCODER_CACHE[name]), "cpu")
     return {"encoders": dict(_ENCODER_CACHE), "recommended": recommended}
 
@@ -856,22 +880,37 @@ def render_clip(
     selected_encoder = get_encoder_capabilities()["recommended"] if encoder == "auto" else encoder
     if not capabilities.get(selected_encoder, False):
         raise RuntimeError(f"Encoder {selected_encoder} tidak tersedia pada FFmpeg server ini.")
-    video_args = {
+    video_args_map = {
         "nvenc": ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "23"],
         "amf": ["-c:v", "h264_amf", "-quality", "speed", "-qp_i", "23", "-qp_p", "23"],
         "qsv": ["-c:v", "h264_qsv", "-preset", "veryfast", "-global_quality", "23"],
         "cpu": ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"],
-    }[selected_encoder]
-    cmd += ["-t", str(end - start), *video_args, "-c:a", "aac", "-b:a", "128k"]
+    }
+    base_cmd = list(cmd)
+    tail = ["-t", str(end - start), "-c:a", "aac", "-b:a", "128k"]
     if subtitle_mode == "track":
-        cmd += ["-c:s", "mov_text"]
-    cmd += ["-movflags", "+faststart", out_path]
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
-    except FileNotFoundError as exc:
-        raise RuntimeError("ffmpeg tidak tersedia di server.") from exc
-    if proc.returncode != 0 or not os.path.exists(out_path):
-        raise RuntimeError(f"Render FFmpeg gagal: {(proc.stderr or '').strip()[:300]}")
+        tail += ["-c:s", "mov_text"]
+    tail += ["-movflags", "+faststart", out_path]
+    attempts = [selected_encoder]
+    if selected_encoder != "cpu" and capabilities.get("cpu"):
+        attempts.append("cpu")
+    proc = None
+    last_stderr = ""
+    final_cmd = base_cmd + video_args_map[selected_encoder] + tail
+    for attempt_encoder in attempts:
+        if os.path.exists(out_path):
+            os.remove(out_path)
+        final_cmd = base_cmd + video_args_map[attempt_encoder] + tail
+        try:
+            proc = subprocess.run(final_cmd, capture_output=True, text=True, timeout=1800)
+        except FileNotFoundError as exc:
+            raise RuntimeError("ffmpeg tidak tersedia di server.") from exc
+        if proc.returncode == 0 and os.path.exists(out_path):
+            selected_encoder = attempt_encoder
+            break
+        last_stderr = (proc.stderr or "").strip()
+    if proc is None or proc.returncode != 0 or not os.path.exists(out_path):
+        raise RuntimeError(f"Render FFmpeg gagal: {last_stderr[:300]}")
     return {
         "file": out_name,
         "size_bytes": os.path.getsize(out_path),
@@ -882,5 +921,5 @@ def render_clip(
         "watermark_applied": watermark_applied,
         "watermark_image_applied": watermark_input is not None,
         "encoder": selected_encoder,
-        "command": " ".join(shlex.quote(c) for c in cmd),
+        "command": " ".join(shlex.quote(c) for c in final_cmd),
     }
