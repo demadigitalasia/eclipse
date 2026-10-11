@@ -53,7 +53,7 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize: (config: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void
+          initialize: (config: { client_id: string; callback: (response: GoogleCredentialResponse) => void; use_fedcm_for_button?: boolean }) => void
           renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void
         }
       }
@@ -62,6 +62,8 @@ declare global {
 }
 
 let gisScriptPromise: Promise<void> | null = null
+let gisInitializedClientId: string | null = null
+let gisCredentialHandler: ((credential: string) => void) | null = null
 function loadGisScript(): Promise<void> {
   if (window.google?.accounts?.id) return Promise.resolve()
   if (gisScriptPromise) return gisScriptPromise
@@ -106,17 +108,24 @@ function GoogleAuthButton({ lang, divider = true }: { lang: Lang; divider?: bool
       }
       loadGisScript().then(() => {
         if (!active || !holder.current || !window.google?.accounts?.id) return
-        window.google.accounts.id.initialize({
-          client_id: status.client_id,
-          callback: async (response) => {
-            if (!response.credential || busyRef.current) return
-            busyRef.current = true
-            const message = await loginWithGoogle(response.credential)
-            busyRef.current = false
-            if (message) setErr(message)
-            else nav('/app', { replace: true })
-          },
-        })
+        gisCredentialHandler = async (credential) => {
+          if (busyRef.current) return
+          busyRef.current = true
+          const message = await loginWithGoogle(credential)
+          busyRef.current = false
+          if (message) setErr(message)
+          else nav('/app', { replace: true })
+        }
+        if (gisInitializedClientId !== status.client_id) {
+          window.google.accounts.id.initialize({
+            client_id: status.client_id,
+            use_fedcm_for_button: false,
+            callback: (response) => {
+              if (response.credential) void gisCredentialHandler?.(response.credential)
+            },
+          })
+          gisInitializedClientId = status.client_id
+        }
         window.google.accounts.id.renderButton(holder.current, {
           type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', width: 400,
         })
