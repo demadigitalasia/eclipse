@@ -523,7 +523,7 @@ def _hex_to_ass(color: str, alpha: int = 0) -> str:
     return f"&H{max(0, min(255, alpha)):02X}{blue:02X}{green:02X}{red:02X}"
 
 
-def write_ass_positions(srt_path: str, ass_path: str, width: int, height: int, x_percent: int, y_percent: int, font_size: int, primary: str, outline: str, border: int, bold: bool, effect: str = "outline", animation: str = "none", font_name: str = "Inter", effect_color: str = "#17100a", animation_duration_ms: int = 280, karaoke_color: str = "#ffffff") -> None:
+def write_ass_positions(srt_path: str, ass_path: str, width: int, height: int, x_percent: int, y_percent: int, font_size: int, primary: str, effect_color: str, bold: bool, effect: str = "outline", animation: str = "none", font_name: str = "Inter", animation_duration_ms: int = 280, karaoke_color: str = "#ffffff") -> None:
     """Convert generated SRT rows to ASS so burned captions can follow the preview position."""
     def ass_time(value: str) -> str:
         hours, minutes, seconds = value.replace(",", ".").split(":")
@@ -589,31 +589,49 @@ def write_ass_positions(srt_path: str, ass_path: str, width: int, height: int, x
             result.append(token if token == r"\N" else escape_ass(token))
         return "".join(result)
 
-    outline_size = 0 if effect == "box" else 5 if effect == "outline" else 2
-    shadow_size = 3 if effect == "shadow" else 0
-    border_style = 3 if effect == "box" else 1
+    if effect == "box":
+        border_style = 3
+        outline_size = max(1, round(font_size * 0.06))
+        shadow_size = 0
+        outline_colour = _hex_to_ass(effect_color, 0x4D)  # ~70% opaque box, mirrors preview
+    elif effect == "shadow":
+        border_style = 1
+        outline_size = 0
+        shadow_size = max(1, round(font_size * 0.08))
+        outline_colour = _hex_to_ass(effect_color, 0x59)
+    else:
+        border_style = 1
+        outline_size = max(1, round(font_size * 0.03))  # ~0.03em, mirrors preview text-stroke
+        shadow_size = 0
+        outline_colour = _hex_to_ass(effect_color)
+    back = _hex_to_ass(effect_color, 0x80)
     base_primary = _hex_to_ass(primary)
     karaoke = _hex_to_ass(karaoke_color)
     if animation == "karaoke":
-        primary, secondary = karaoke, base_primary
+        # libass draws elapsed syllables with PrimaryColour and upcoming ones with
+        # SecondaryColour; preview highlights the sung word with the karaoke color.
+        primary_colour, secondary_colour = karaoke, base_primary
     elif animation == "typewriter":
-        primary, secondary = base_primary, _hex_to_ass(primary, 0xFF)
+        primary_colour, secondary_colour = base_primary, _hex_to_ass(primary, 0xFF)
     else:
-        primary, secondary = base_primary, karaoke
-    outline = _hex_to_ass(effect_color)
-    back = _hex_to_ass(effect_color, 0x80)
+        primary_colour, secondary_colour = base_primary, karaoke
     duration_cs = max(10, min(150, round(animation_duration_ms / 10)))
     with open(srt_path, "r", encoding="utf-8") as source:
         blocks = source.read().strip().split("\n\n")
     x = round(width * max(0, min(100, x_percent)) / 100)
     y = round(height * (100 - max(0, min(100, y_percent))) / 100)
+    margin_lr = max(0, round(width * 0.04))
     with open(ass_path, "w", encoding="utf-8") as output:
         output.write(
-            f"[Script Info]\nScriptType: v4.00+\nPlayResX: {width}\nPlayResY: {height}\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n"
+            f"[Script Info]\nScriptType: v4.00+\nPlayResX: {width}\nPlayResY: {height}\nWrapStyle: 0\nScaledBorderAndShadow: yes\n\n"
             "[V4+ Styles]\nFormat: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n"
-            f"Style: Default,{font_name},{font_size},{primary},{secondary},{outline},{back},{-1 if bold else 0},0,{border_style},{outline_size},{shadow_size},2,20,20,20,1\n\n"
+            f"Style: Default,{font_name},{font_size},{primary_colour},{secondary_colour},{outline_colour},{back},{-1 if bold else 0},0,{border_style},{outline_size},{shadow_size},2,{margin_lr},{margin_lr},20,1\n\n"
             "[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n"
         )
+
+        def emit(start_value: str, end_value: str, tags_value: str, text_value: str) -> None:
+            output.write(f"Dialogue: 0,{start_value},{end_value},Default,,{margin_lr},{margin_lr},0,,{{{tags_value}}}{text_value}\n")
+
         for block in blocks:
             lines = block.splitlines()
             if len(lines) < 3 or " --> " not in lines[1]:
@@ -629,18 +647,18 @@ def write_ass_positions(srt_path: str, ass_path: str, width: int, height: int, x
             if animation in {"typewriter", "karaoke"}:
                 progressive_cs = max(1, min(round(line_duration * 100), duration_cs)) if animation == "typewriter" else max(1, round(line_duration * 100))
                 progressive = progressive_text(raw_text_lines, progressive_cs, animation == "karaoke")
-                output.write(f"Dialogue: 0,{ass_time(start_time)},{ass_time(end_time)},Default,,0,0,0,,{{{tags}}}{progressive}\n")
+                emit(ass_time(start_time), ass_time(end_time), tags, progressive)
             elif animation == "wipe":
                 reveal_ms = max(100, min(animation_duration_ms, round(line_duration * 1000)))
                 tags = f"\\an2\\pos({x},{y})\\clip(0,0,0,{height})\\t(0,{reveal_ms},\\clip(0,0,{width},{height}))"
-                output.write(f"Dialogue: 0,{ass_time(start_time)},{ass_time(end_time)},Default,,0,0,0,,{{{tags}}}{text}\n")
+                emit(ass_time(start_time), ass_time(end_time), tags, text)
             elif animation == "pop":
                 pop_ms = max(100, min(animation_duration_ms, round(line_duration * 500)))
                 tags = f"\\an2\\pos({x},{y})\\fscx78\\fscy78\\alpha&HFF&\\t(0,{pop_ms},\\fscx100\\fscy100\\alpha&H00&)"
-                output.write(f"Dialogue: 0,{ass_time(start_time)},{ass_time(end_time)},Default,,0,0,0,,{{{tags}}}{text}\n")
+                emit(ass_time(start_time), ass_time(end_time), tags, text)
             elif animation == "fade":
                 tags += f"\\fad({line_animation_cs},{line_animation_cs})"
-                output.write(f"Dialogue: 0,{ass_time(start_time)},{ass_time(end_time)},Default,,0,0,0,,{{{tags}}}{text}\n")
+                emit(ass_time(start_time), ass_time(end_time), tags, text)
             elif animation in {"slide_up", "slide_left", "slide_right"}:
                 distance = max(12, round(height * 0.035))
                 animation_seconds = line_animation_cs / 100
@@ -652,15 +670,15 @@ def write_ass_positions(srt_path: str, ass_path: str, width: int, height: int, x
                     enter_tags = f"\\an2\\move({x + dx},{y + dy},{x},{y},0,{line_animation_cs * 10})\\fad({max(1, line_animation_cs // 2)},0)"
                     exit_tags = f"\\an2\\move({x},{y},{x - dx},{y - dy},0,{line_animation_cs * 10})\\fad(0,{max(1, line_animation_cs // 2)})"
                     static_tags = f"\\an2\\pos({x},{y})"
-                    output.write(f"Dialogue: 0,{ass_centiseconds(start_seconds)},{ass_centiseconds(enter_end)},Default,,0,0,0,,{{{enter_tags}}}{text}\n")
+                    emit(ass_centiseconds(start_seconds), ass_centiseconds(enter_end), enter_tags, text)
                     if exit_start > enter_end:
-                        output.write(f"Dialogue: 0,{ass_centiseconds(enter_end)},{ass_centiseconds(exit_start)},Default,,0,0,0,,{{{static_tags}}}{text}\n")
-                    output.write(f"Dialogue: 0,{ass_centiseconds(exit_start)},{ass_centiseconds(end_seconds)},Default,,0,0,0,,{{{exit_tags}}}{text}\n")
+                        emit(ass_centiseconds(enter_end), ass_centiseconds(exit_start), static_tags, text)
+                    emit(ass_centiseconds(exit_start), ass_centiseconds(end_seconds), exit_tags, text)
                 else:
                     tags = f"\\an2\\pos({x},{y})\\fad({line_animation_cs},{line_animation_cs})"
-                    output.write(f"Dialogue: 0,{ass_time(start_time)},{ass_time(end_time)},Default,,0,0,0,,{{{tags}}}{text}\n")
+                    emit(ass_time(start_time), ass_time(end_time), tags, text)
             else:
-                output.write(f"Dialogue: 0,{ass_time(start_time)},{ass_time(end_time)},Default,,0,0,0,,{{{tags}}}{text}\n")
+                emit(ass_time(start_time), ass_time(end_time), tags, text)
 
 
 def render_clip(
@@ -715,41 +733,17 @@ def render_clip(
         if sub_count:
             subtitle_mode = "track"
             if has_filter("subtitles"):
-                escaped = srt_path.replace("'", r"'\''")
-                # libass colors are AABBGGRR. Keep high-contrast outlines for mobile playback.
-                style = {
-                    "viral_pop": ("&H0000D7FF", "&H00101010", 1),
-                    "beast_punch": ("&H0000FF70", "&H00101010", 1),
-                    "cyber_violet": ("&H00FF66D9", "&H00101010", 1),
-                    "fire_crimson": ("&H003333FF", "&H00101010", 1),
-                    "electric_cyan": ("&H00FFFF00", "&H00101010", 1),
-                    "golden_aura": ("&H0000CFFF", "&H00101010", 1),
-                    "clean_minimal": ("&H00FFFFFF", "&H80000000", 3),
-                    "off": ("&H00FFFFFF", "&H00101010", 1),
-                }.get(caption_style, ("&H0000D7FF", "&H00101010", 1))
-                primary, outline, border = style
                 caption_font_size = max(18, int(caption_size * (width / 1080) * 0.75))
-                margin_v = max(40, int(height * caption_y / 100))
-                caption_outline = 0 if caption_effect == "box" else 5 if caption_effect == "outline" else 2
-                caption_shadow = 3 if caption_effect == "shadow" else 0
-                caption_border = 3 if caption_effect == "box" else 1
                 caption_font_name = "Montserrat" if caption_font == "montserrat" else "Inter"
-                primary = _hex_to_ass(caption_color)
-                secondary = _hex_to_ass(caption_karaoke_color)
-                if caption_animation == "karaoke":
-                    primary, secondary = secondary, primary
-                elif caption_animation == "typewriter":
-                    secondary = _hex_to_ass(caption_color, 0xFF)
-                outline = _hex_to_ass(caption_effect_color)
-                back = _hex_to_ass(caption_effect_color, 0x80)
-                style_value = f"FontName={caption_font_name},FontSize={caption_font_size},PrimaryColour={primary},SecondaryColour={secondary},OutlineColour={outline},BackColour={back},BorderStyle={caption_border},Outline={caption_outline},Shadow={caption_shadow},Bold=1,Alignment=2,MarginV={margin_v}"
-                if caption_style == "clean_minimal":
-                    style_value = style_value.replace(",Bold=1", ",Bold=0")
                 ass_path = os.path.join(job_path, f"clip_{clip_id}.ass")
-                write_ass_positions(srt_path, ass_path, width, height, caption_x, caption_y, caption_font_size, caption_color, outline, border, caption_style != "clean_minimal", caption_effect, caption_animation, caption_font_name, caption_effect_color, caption_animation_duration_ms, caption_karaoke_color)
-                escaped = ass_path.replace("'", r"'\''")
-                force_style = f":force_style='{style_value}'" if style_value else ""
-                filters.append(f"subtitles='{escaped}'{force_style}")
+                write_ass_positions(
+                    srt_path, ass_path, width, height, caption_x, caption_y,
+                    caption_font_size, caption_color, caption_effect_color,
+                    caption_style != "clean_minimal", caption_effect, caption_animation,
+                    caption_font_name, caption_animation_duration_ms, caption_karaoke_color,
+                )
+                escaped_ass = ass_path.replace("'", r"'\''")
+                filters.append(f"subtitles='{escaped_ass}'")
                 subtitle_mode = "burned"
             elif caption_x != 50 or caption_y != 21:
                 raise RuntimeError("Posisi subtitle kustom memerlukan filter FFmpeg subtitles/libass pada server.")

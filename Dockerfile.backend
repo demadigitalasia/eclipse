@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       curl \
       ca-certificates \
       gnupg \
+      fontconfig \
       fonts-dejavu-core \
       libgl1 \
       libglib2.0-0 \
@@ -21,6 +22,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+# Bundled caption/title fonts so burned subtitles and overlays match the Studio
+# preview (which loads the same families in the browser).
+COPY backend/assets/fonts/inter/ /usr/share/fonts/truetype/inter/
+COPY backend/assets/fonts/montserrat/ /usr/share/fonts/truetype/montserrat/
+RUN fc-cache -f
 
 WORKDIR /app
 
