@@ -54,6 +54,7 @@ class Settings:
     log_level: str
     cookie_secure: bool
     allow_registration: bool
+    google_client_id: str
     reset_code_logging: bool
     reset_smtp_host: str
     reset_smtp_port: int
@@ -116,6 +117,7 @@ def load_settings() -> Settings:
         log_level=os.environ.get("LOG_LEVEL", "INFO").upper(),
         cookie_secure=os.environ.get("ECLIPSE_COOKIE_SECURE", cookie_secure_default).strip().lower() in {"1", "true", "yes"},
         allow_registration=os.environ.get("ECLIPSE_ALLOW_REGISTRATION", registration_default).strip().lower() in {"1", "true", "yes"},
+        google_client_id=os.environ.get("GOOGLE_CLIENT_ID", "").strip(),
         reset_code_logging=os.environ.get("ECLIPSE_RESET_CODE_LOGGING", "false").strip().lower() in {"1", "true", "yes"},
         reset_smtp_host=os.environ.get("ECLIPSE_RESET_SMTP_HOST", "").strip(),
         reset_smtp_port=_get_int("ECLIPSE_RESET_SMTP_PORT", 587, 1, 65535),

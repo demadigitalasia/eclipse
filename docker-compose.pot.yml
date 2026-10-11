@@ -7,6 +7,7 @@
 #
 # Set these as environment variables on the Coolify resource (never commit them):
 #   ALLOWED_ORIGINS, ECLIPSE_MASTER_KEY (optional)
+#   GOOGLE_CLIENT_ID (optional, enables Google Sign-In)
 #   ECLIPSE_STORAGE_BACKEND, R2_ACCOUNT_ID, R2_BUCKET_NAME,
 #   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 #   ECLIPSE_EGRESS_PROXY (optional residential/mobile proxy)
@@ -37,6 +38,7 @@ services:
       ECLIPSE_ENV: ${ECLIPSE_ENV:-production}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://eclipse.demadigitalasia.com}
       ECLIPSE_MASTER_KEY: ${ECLIPSE_MASTER_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       ECLIPSE_STORAGE_BACKEND: ${ECLIPSE_STORAGE_BACKEND:-r2}
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}

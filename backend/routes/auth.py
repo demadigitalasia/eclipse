@@ -54,6 +54,23 @@ def api_login(body: auth.LoginBody, response: Response):
     return payload
 
 
+@router.get("/auth/google/status")
+def api_google_status():
+    """Expose whether Google Sign-In is configured and the public client id."""
+    return {"enabled": bool(SETTINGS.google_client_id), "client_id": SETTINGS.google_client_id}
+
+
+@router.post("/auth/google")
+def api_google_login(body: auth.GoogleLoginBody, response: Response):
+    payload, err = auth.login_with_google(body.credential)
+    if err:
+        return JSONResponse(status_code=http_status_for(err["error"]["code"]), content=err)
+    token = payload.pop("token")
+    response.set_cookie("eclipse_session", token, max_age=7 * 24 * 3600,
+                        httponly=True, secure=SETTINGS.cookie_secure, samesite="lax", path="/api")
+    return payload
+
+
 @router.post("/auth/logout")
 def api_logout(response: Response, authorization: Optional[str] = Header(default=None),
                eclipse_session: Optional[str] = Cookie(default=None)):

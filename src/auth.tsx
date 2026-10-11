@@ -30,6 +30,7 @@ interface AuthCtx {
   audit: AuditEntry[]
   adminDataError: string | null
   login: (email: string, pass: string) => Promise<string | null>
+  loginWithGoogle: (credential: string) => Promise<string | null>
   register: (name: string, email: string, pass: string) => Promise<string | null>
   logout: () => Promise<void>
   updateMe: (patch: Partial<Account>) => Promise<string | null>
@@ -124,6 +125,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null
     } catch (error) {
       return error instanceof Error ? error.message : 'Tidak dapat masuk.'
+    }
+  }, [refreshAdmin])
+
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    try {
+      const data = await api<{ user: ApiAccount }>('/auth/google', json('POST', { credential }))
+      const next = accountFromApi(data.user)
+      setUser(next)
+      setLoginEvent((event) => event + 1)
+      if (next.role === 'admin') await refreshAdmin()
+      return null
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Tidak dapat masuk dengan Google.'
     }
   }, [refreshAdmin])
 
@@ -250,9 +264,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthCtx>(() => ({
-    ready, loginEvent, user, users, audit, adminDataError, login, register, logout, updateMe, uploadProfilePhoto, refreshUser: refreshMe, setRole, setPlan, renewPlan, setActive,
+    ready, loginEvent, user, users, audit, adminDataError, login, loginWithGoogle, register, logout, updateMe, uploadProfilePhoto, refreshUser: refreshMe, setRole, setPlan, renewPlan, setActive,
     clearAudit, removeUser, requestReset, confirmReset, refreshAdmin,
-  }), [ready, loginEvent, user, users, audit, adminDataError, login, register, logout, updateMe, uploadProfilePhoto, refreshMe, setRole, setPlan, renewPlan,
+  }), [ready, loginEvent, user, users, audit, adminDataError, login, loginWithGoogle, register, logout, updateMe, uploadProfilePhoto, refreshMe, setRole, setPlan, renewPlan,
     clearAudit, removeUser, requestReset, confirmReset, refreshAdmin, setActive])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

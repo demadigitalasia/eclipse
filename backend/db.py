@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   profile_photo_mime TEXT NOT NULL DEFAULT '',
   profile_photo_updated_at TEXT NOT NULL DEFAULT '',
   active INTEGER NOT NULL DEFAULT 1,
+  google_sub TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS reset_tokens (
@@ -296,15 +297,28 @@ def find_account_by_id(conn: sqlite3.Connection, account_id: str) -> Optional[di
     return row_to_dict(row) if row else None
 
 
-def create_account(conn: sqlite3.Connection, name: str, email: str, password_hash: str, role: str) -> dict:
+def find_account_by_google_sub(conn: sqlite3.Connection, google_sub: str) -> Optional[dict]:
+    if not google_sub:
+        return None
+    row = conn.execute("SELECT * FROM accounts WHERE google_sub = ?", (google_sub.strip(),)).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def set_google_sub(conn: sqlite3.Connection, account_id: str, google_sub: str) -> None:
+    conn.execute("UPDATE accounts SET google_sub = ? WHERE id = ?", (google_sub.strip(), account_id))
+    conn.commit()
+
+
+def create_account(conn: sqlite3.Connection, name: str, email: str, password_hash: str, role: str,
+                   google_sub: str | None = None) -> dict:
     import uuid
 
     account_id = f"u-{uuid.uuid4().hex[:12]}"
     email = email.strip().lower()
     conn.execute(
-        "INSERT INTO accounts (id, name, email, password_hash, role, plan, created_at)"
-        " VALUES (?, ?, ?, ?, ?, 'free', ?)",
-        (account_id, name.strip(), email, password_hash, role, now_iso()),
+        "INSERT INTO accounts (id, name, email, password_hash, role, plan, created_at, google_sub)"
+        " VALUES (?, ?, ?, ?, ?, 'free', ?, ?)",
+        (account_id, name.strip(), email, password_hash, role, now_iso(), (google_sub or "").strip()),
     )
     conn.commit()
     created = find_account_by_id(conn, account_id)
@@ -1144,6 +1158,12 @@ def init_db(path: str) -> None:
             conn.execute("ALTER TABLE accounts ADD COLUMN profile_photo_mime TEXT NOT NULL DEFAULT ''")
         if "profile_photo_updated_at" not in account_columns:
             conn.execute("ALTER TABLE accounts ADD COLUMN profile_photo_updated_at TEXT NOT NULL DEFAULT ''")
+        if "google_sub" not in account_columns:
+            conn.execute("ALTER TABLE accounts ADD COLUMN google_sub TEXT NOT NULL DEFAULT ''")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_google_sub "
+            "ON accounts(google_sub) WHERE google_sub != ''"
+        )
         payment_columns = {row["name"] for row in conn.execute("PRAGMA table_info(subscription_payments)").fetchall()}
         if payment_columns and "expires_at" not in payment_columns:
             conn.execute("ALTER TABLE subscription_payments ADD COLUMN expires_at TEXT NOT NULL DEFAULT ''")

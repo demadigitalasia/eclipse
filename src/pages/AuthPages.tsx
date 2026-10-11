@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
-import { getPasswordResetStatus, getRegistrationStatus } from '../api'
+import { getGoogleAuthStatus, getPasswordResetStatus, getRegistrationStatus } from '../api'
 import BrandLogo from '../components/BrandLogo'
 import Icon from '../components/Icon'
 import type { Lang } from '../types'
@@ -44,6 +44,89 @@ function ErrorBox({ msg }: { msg: string | null }) {
     <p className="error-box" role="alert" tabIndex={-1} ref={ref}>
       {msg}
     </p>
+  )
+}
+
+type GoogleCredentialResponse = { credential?: string }
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void
+          renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void
+        }
+      }
+    }
+  }
+}
+
+let gisScriptPromise: Promise<void> | null = null
+function loadGisScript(): Promise<void> {
+  if (window.google?.accounts?.id) return Promise.resolve()
+  if (gisScriptPromise) return gisScriptPromise
+  gisScriptPromise = new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('google-gis'))
+    document.head.appendChild(script)
+  })
+  return gisScriptPromise
+}
+
+function GoogleAuthButton({ lang }: { lang: Lang }) {
+  const t = getSiteStrings(lang)
+  const { loginWithGoogle } = useAuth()
+  const nav = useNavigate()
+  const holder = useRef<HTMLDivElement | null>(null)
+  const busyRef = useRef(false)
+  const [state, setState] = useState<'checking' | 'hidden' | 'ready'>('checking')
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => {
+    let active = true
+    getGoogleAuthStatus().then((status) => {
+      if (!active) return
+      if (!status.enabled || !status.client_id) {
+        setState('hidden')
+        return
+      }
+      loadGisScript().then(() => {
+        if (!active || !holder.current || !window.google?.accounts?.id) return
+        window.google.accounts.id.initialize({
+          client_id: status.client_id,
+          callback: async (response) => {
+            if (!response.credential || busyRef.current) return
+            busyRef.current = true
+            const message = await loginWithGoogle(response.credential)
+            busyRef.current = false
+            if (message) setErr(message)
+            else nav('/app', { replace: true })
+          },
+        })
+        window.google.accounts.id.renderButton(holder.current, {
+          type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', width: 320,
+        })
+        setState('ready')
+      }).catch(() => {
+        if (active) setErr(t.googleUnavailable)
+      })
+    }).catch(() => {
+      if (active) setState('hidden')
+    })
+    return () => { active = false }
+  }, [loginWithGoogle, nav, t.googleUnavailable])
+
+  if (state === 'hidden') return null
+  return (
+    <div className="google-auth">
+      <div className="auth-divider" aria-hidden="true"><span>{t.authOr}</span></div>
+      {state !== 'ready' && <p className="auth-status" role="status">{t.googleLoading}</p>}
+      <div className="google-button" ref={holder} />
+      <ErrorBox msg={err} />
+    </div>
   )
 }
 
@@ -120,6 +203,7 @@ export function LoginPage({ lang }: { lang: Lang }) {
       <button type="submit" className="btn-primary" disabled={busy}>
         {busy ? '…' : t.navLogin}
       </button>
+      <GoogleAuthButton lang={lang} />
       <p className="helper">
         {t.needAccount} <Link to="/register">{t.navRegister}</Link>
       </p>
@@ -200,6 +284,7 @@ export function RegisterPage({ lang }: { lang: Lang }) {
           </button>
         </>
       )}
+      {registrationStatus !== 'checking' && <GoogleAuthButton lang={lang} />}
       {registrationStatus !== 'checking' && <p className="helper">{t.haveAccount} <Link to="/login">{t.navLogin}</Link></p>}
     </AuthShell>
   )

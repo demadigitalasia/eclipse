@@ -21,6 +21,10 @@ export function getPasswordResetStatus() {
   return apiRequest<{ enabled: boolean }>('/auth/reset-status')
 }
 
+export function getGoogleAuthStatus() {
+  return apiRequest<{ enabled: boolean; client_id: string }>('/auth/google/status')
+}
+
 export function deleteHistoryEntry(jobId: string) {
   return apiRequest<{ ok: boolean }>(`/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' })
 }

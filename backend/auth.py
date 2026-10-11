@@ -48,6 +48,16 @@ class RoleBody(BaseModel):
     renew: bool = False
 
 
+class GoogleLoginBody(BaseModel):
+    credential: str = Field(min_length=20, max_length=8192)
+
+
+# Accounts created through Google Sign-In carry no usable password. A sentinel
+# without the ``$`` separator makes ``db.verify_password`` always reject it, so
+# password login stays impossible until the user performs a reset.
+GOOGLE_PASSWORD_SENTINEL = "!google-oauth"
+
+
 def _unauthorized() -> JSONResponse:
     return JSONResponse(
         status_code=401,
@@ -128,6 +138,54 @@ def login_account(email: str, password: str):
         token, exp = db.create_session(conn, account["id"])
         db.log_audit(conn, account["email"], "masuk", "")
         return session_payload(account, token, exp), None
+    finally:
+        conn.close()
+
+
+def login_with_google(credential: str):
+    """Verify a Google ID token and start a session, linking or creating an account."""
+    if not SETTINGS.google_client_id:
+        return None, error_envelope("invalid_range", "Login Google belum dikonfigurasi.")
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
+
+        claims = google_id_token.verify_oauth2_token(
+            credential, google_requests.Request(), SETTINGS.google_client_id,
+        )
+    except Exception:
+        logger.warning("Verifikasi token Google gagal", exc_info=True)
+        return None, error_envelope("invalid_url", "Token Google tidak valid atau kedaluwarsa.", hint="Coba masuk lagi.")
+    if not claims.get("email_verified"):
+        return None, error_envelope("invalid_url", "Email Google belum terverifikasi.")
+    email = str(claims.get("email") or "").strip().lower()
+    google_sub = str(claims.get("sub") or "").strip()
+    if not email or not google_sub:
+        return None, error_envelope("invalid_url", "Data akun Google tidak lengkap.")
+    name = str(claims.get("name") or "").strip() or email.split("@", 1)[0]
+    conn = db.get_conn(SETTINGS.db_path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        account = db.find_account_by_google_sub(conn, google_sub)
+        created = False
+        if not account:
+            account = db.find_account_by_email(conn, email)
+            if account:
+                # Google has verified this email, so attach the identity to the existing account.
+                db.set_google_sub(conn, account["id"], google_sub)
+                account = db.find_account_by_id(conn, account["id"])
+            else:
+                account = db.create_account(conn, name, email, GOOGLE_PASSWORD_SENTINEL, "user", google_sub=google_sub)
+                created = True
+        if not account or not account.get("active", 1):
+            conn.rollback()
+            return None, error_envelope("invalid_url", "Akun dinonaktifkan. Hubungi administrator.")
+        token, exp = db.create_session(conn, account["id"])
+        db.log_audit(conn, account["email"], "daftar-google" if created else "masuk-google", "google")
+        return session_payload(account, token, exp), None
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 

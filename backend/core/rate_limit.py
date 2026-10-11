@@ -45,6 +45,7 @@ class SlidingWindowLimiter:
 
 AUTH_LIMITS: dict[str, tuple[int, int]] = {
     "/api/auth/login": (10, 60),
+    "/api/auth/google": (10, 60),
     "/api/auth/register": (5, 3600),
     "/api/auth/reset-request": (5, 3600),
     "/api/auth/reset-confirm": (10, 3600),
