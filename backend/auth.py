@@ -171,8 +171,17 @@ def login_with_google(credential: str):
         if not account:
             account = db.find_account_by_email(conn, email)
             if account:
+                linked_sub = str(account.get("google_sub") or "").strip()
+                if linked_sub and linked_sub != google_sub:
+                    # Never overwrite an existing Google identity for this email.
+                    conn.rollback()
+                    return None, error_envelope(
+                        "invalid_url", "Email ini sudah tertaut ke akun Google lain.",
+                        hint="Gunakan akun Google yang sesuai atau masuk dengan sandi.",
+                    )
                 # Google has verified this email, so attach the identity to the existing account.
-                db.set_google_sub(conn, account["id"], google_sub)
+                if linked_sub != google_sub:
+                    db.set_google_sub(conn, account["id"], google_sub)
                 account = db.find_account_by_id(conn, account["id"])
             else:
                 account = db.create_account(conn, name, email, GOOGLE_PASSWORD_SENTINEL, "user", google_sub=google_sub)

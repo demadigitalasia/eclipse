@@ -88,7 +88,7 @@ function GoogleGlyph() {
   )
 }
 
-function GoogleAuthButton({ lang }: { lang: Lang }) {
+function GoogleAuthButton({ lang, divider = true }: { lang: Lang; divider?: boolean }) {
   const t = getSiteStrings(lang)
   const { loginWithGoogle } = useAuth()
   const nav = useNavigate()
@@ -134,7 +134,7 @@ function GoogleAuthButton({ lang }: { lang: Lang }) {
   const ready = state === 'ready'
   return (
     <div className="google-auth">
-      <div className="auth-divider" aria-hidden="true"><span>{t.authOr}</span></div>
+      {divider && <div className="auth-divider" aria-hidden="true"><span>{t.authOr}</span></div>}
       <div className="google-signin">
         <span className="btn-secondary google-signin__btn" aria-hidden="true">
           {ready ? (<><GoogleGlyph /><span>{t.googleContinue}</span></>) : (<span>{t.googleLoading}</span>)}
@@ -237,6 +237,7 @@ export function RegisterPage({ lang }: { lang: Lang }) {
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [registrationStatus, setRegistrationStatus] = useState<'checking' | 'open' | 'closed' | 'unavailable'>('checking')
+  const [googleEnabled, setGoogleEnabled] = useState(false)
   const s = strength(pass)
   const labels = ['', t.passWeak, t.passMid, t.passStrong]
   const checkRegistration = useCallback(async () => {
@@ -249,6 +250,13 @@ export function RegisterPage({ lang }: { lang: Lang }) {
     }
   }, [])
   useEffect(() => { void checkRegistration() }, [checkRegistration])
+  useEffect(() => {
+    let active = true
+    getGoogleAuthStatus().then((status) => {
+      if (active) setGoogleEnabled(Boolean(status.enabled && status.client_id))
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
   const doRegister = async () => {
     if (busy || registrationStatus !== 'open') return
     setBusy(true)
@@ -268,7 +276,7 @@ export function RegisterPage({ lang }: { lang: Lang }) {
       {registrationStatus === 'checking' && <p className="auth-status" role="status">{t.regChecking}</p>}
       {registrationStatus === 'closed' && (
         <div className="auth-status" role="status">
-          <p>{t.regClosedBody}</p>
+          <p>{googleEnabled ? t.regClosedGoogle : t.regClosedBody}</p>
         </div>
       )}
       {registrationStatus === 'unavailable' && (
@@ -300,7 +308,7 @@ export function RegisterPage({ lang }: { lang: Lang }) {
           </button>
         </>
       )}
-      {registrationStatus !== 'checking' && <GoogleAuthButton lang={lang} />}
+      {registrationStatus !== 'checking' && <GoogleAuthButton lang={lang} divider={registrationStatus === 'open'} />}
       {registrationStatus !== 'checking' && <p className="helper">{t.haveAccount} <Link to="/login">{t.navLogin}</Link></p>}
     </AuthShell>
   )
